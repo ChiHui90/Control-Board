@@ -103,7 +103,6 @@ def sensor_do_op(sensor_cur_status, op_list):
     return ans
 
 def run(*args):
-    t1 = time.time()
     global rule, status, sensor_prev_status
 
     OpenSig = -10000  # open -> status : 1
@@ -125,11 +124,6 @@ def run(*args):
         return CloseSig
     else: # i.e. rule["mode"] == Sensor
         all_sen_data = rule["sensors_data"]
-        
-        ###
-        if "sensor_value" not in all_sen_data[0]: return 0
-        else: return all_sen_data[0]["sensor_value"]
-        ###
 
         # initialize sensor_prev_status
         if len(sensor_prev_status) == 0: 
@@ -163,15 +157,9 @@ def run(*args):
             return errorSig 
 
         sensor_after_op_ans = sensor_do_op(sensor_cur_status, op_list) # 0 or 1
-        t2 = time.time()
-        return [t1,t2]
         if sensor_after_op_ans == 0:
             status = 0
-            if "sensor_value" not in all_sen_data[0]: return 0
-            else: return all_sen_data[0]["sensor_value"]
-            # return CloseSig
+            return CloseSig
         else: # sensor_after_op_ans == 1
             status = 1
-            if "sensor_value" not in all_sen_data[0]: return 0
-            else: return all_sen_data[0]["sensor_value"]
-            # return OpenSig
+            return OpenSig
