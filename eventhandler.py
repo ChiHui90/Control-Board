@@ -87,7 +87,7 @@ def render_index():
 @apis.route("/subsystem/infos", methods=["GET"])
 @requires_login
 def get_infos():
-    return f'https://{env_config["IoTtalk"]["ServerIP"]}/connection#', 200
+    return f'https://{env_config["IoTtalk"]["ServerCCMIP"]}/connection#', 200
 
 
 @apis.route('/cb/<int:cb_id>/new_rules', methods=['POST'])
@@ -513,7 +513,7 @@ def refresh_cb(cb_id):
         cb = CB[cb_id]
         if use_v1:
             NAs = requests.post(  # Workaround for V1 CCM API project.get lacking NA info.
-                f"https://{env_config['IoTtalk']['ServerIP']}/reload_data",
+                f"https://{env_config['IoTtalk']['ServerCCMIP']}/reload_data",
                 data={"p_id": cb.p_id}
             )
             NAs = json.loads(NAs.text)["join"]
