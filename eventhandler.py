@@ -734,7 +734,7 @@ def refresh_cb(cb_id):
         cb.ag_token = ag_token
 
         # Bind device to DO
-        time.sleep(1)  # Uncomment this if the IoTtalk Server cannot create DO in time.
+        time.sleep(2)  # Uncomment this if the IoTtalk Server cannot create DO in time.
         do_id = cb.do_id.split(",")
         status, dm_name = bind_device_ag(cb.mac_addr, cb.p_id, do_id, api_logger)
         if not status:
@@ -747,19 +747,19 @@ def refresh_cb(cb_id):
             if rule.rule_id not in running_status:
                 running_status[rule.rule_id] = default_status
         cb_db.commit()
-        api_logger.info(f"Create New CB, DM Name: {dm_name}")
+        api_logger.info(f"Refresh CB, DM Name: {dm_name}")
 
         #title = f"ControlBoard {cb.cb_name} is refreshed by {session['user']}, new CBElements as follows\n"
         #rules = [rule.to_dict() for rule in cb.rule_set] #TODO CB_Sensor to dict if need email notifier
         #users = [user.account for user in cb.account_set]
         #email_notifier.notify_user(title, rules, users)
-        return f"Create New CB, DM Name: {dm_name}", 200
+        return f"Refresh CB, DM Name: {dm_name}", 200
     except NotFoundError:
         api_logger.warning("No NAs found, remind user to create NAs")
         cb = CB[cb_id]
         abort(400, "No NA detected, please create Join point in Project {cb.cb_name}")
     except CCMAPIFailError:
-        api.logger.exception("CCMAPI failed, check which part of the procedure fails")
+        api_logger.exception("CCMAPI failed, check which part of the procedure fails")
         abort(500, "Internal Server Error")
     except Exception as err:
         api_logger.exception(err)
@@ -889,7 +889,7 @@ def create_cb():
         return "Internal server error", 500
 
     cb_db.commit()
-    return "Create SA succeeded", 200
+    return f"Create SA succeeded with cb_db id: {cb.cb_id}", 200
 
 
 @apis.route('/cb/delete_cb', methods=['POST'])
