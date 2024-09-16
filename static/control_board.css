@@ -1,0 +1,208 @@
+html, body {
+  background-color: #F6F4FB;
+  min-width: 500px;
+  height: auto;
+}
+
+.fieldName > a{
+  overflow-x: hidden;
+  /*width: 80px;*/
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.one-item-dropdown > button::after{
+  border: 0px;
+}
+
+.custom-nav-item {
+  color: rgba(255, 255, 255, 1) !important;
+}
+
+.field-manage {
+  margin-right: 2px;
+  margin-top: 2px;
+  background-color: #F6F4FB;
+}
+
+.navbar {
+  padding: 0.05rem 0.1rem;
+}
+
+.system-button {
+  border-left: 1.5px solid #ffffff;
+}
+
+
+.justify-content-between {
+  padding: 0.2rem 0.1rem;
+}
+
+.create-field {
+  border-color: #ffffff;
+}
+
+.custom-card-body {
+  overflow-y:scroll;
+  max-height: 110vh;
+}
+
+.custom-input {
+  padding-top: 0px;
+  padding-bottom: 0px;
+  /* max-width: 100px; */
+  margin: 0 8px;
+}
+
+/* Hide Model Body */
+.hide-body {  
+  padding: 0;
+}
+
+.custom-select {
+  padding-top: 0px;
+  padding-bottom: 0px;
+  padding-right: 20px;
+  min-width: 8px;
+  max-width: 45px;
+  background: url(./imgs/expand_more-24px.svg) no-repeat right .25rem center/15px 15px;
+}
+
+/* bootstrap-vue class of Dropdown Header*/
+.dropdown-header {
+  padding: 0px 5px;
+}
+
+/* bootstrap-vue class of form-checkbox item */
+.form-check {
+  font-size: 0.8rem;
+}
+
+/* bootstrap-vue class of card */
+.card {
+  width: 98%;
+  margin-left: auto;
+  margin-right: auto
+}
+
+.card-header {
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.card-header-tabs {
+  flex-flow: row nowrap;
+}
+
+/* bootstrap-vue class of dropdown-item */
+.dropdown-item {
+  padding-left: 15px;
+  padding-right: 5px;
+}
+
+/* bootstrap-vue class of light button to create trapsparent background button*/
+.btn-light {
+  background-color: #ffffff;
+  border-color: #ffffff;
+  padding: 0px;
+  padding-bottom: 4px;
+}
+
+.setting-card {
+  min-width: 435px;
+  padding-left: 14.5px;
+  padding-right: 14.5px;
+  border-left: 1.5px solid gainsboro;
+  border-right: 1.5px solid gainsboro;
+  border-top-right-radius: 5px;
+  border-top-left-radius: 5px;
+  border-bottom: 1.5px solid gainsboro;
+  margin-bottom: 15px;
+}
+
+.element-status {
+  background-color: #28A745;
+  border: 0.1px;
+  border-top-right-radius: 5px;
+  border-top-left-radius: 5px;
+  padding-right: 20px;
+  align-items: center;
+}
+
+.element-status.triggered {
+  background-color: #DC3545;
+}
+
+.sensor-list {
+  background-color: rgba(0, 0, 0, 0.03);
+  border-bottom: 1.5px solid gainsboro;
+  padding: 2px 0px;
+}
+
+.sensor-list > div {
+  padding-left: 0px;
+  padding-right: 1px;
+}
+
+.sensor-list > div > div > button {
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+.sensor-list > div > span {
+  padding-top: 5px;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.setting-area {
+  text-align: start;
+}
+
+.setting-sensor {
+  display: inline-flex;
+}
+
+.duty-area {
+  margin-bottom: 5px;
+}
+
+.setting-text {
+  padding-top: 5px;
+}
+
+.setting-text-start {
+  padding-top: 5px;
+}
+
+.setting-text-mid {
+  padding-top: 5px;
+  padding-right: 15px;
+}
+
+/* Belows are for Management page CSS */
+.manage-title {
+  font-size: 1.5rem;
+  padding-left: 1%;
+  padding-bottom: 5px;
+}
+
+.divide-top {
+  padding-top: 10px;
+  border-top: 1.5px solid gainsboro;
+}
+
+.divide-bottom {
+  padding-bottom: 10px;
+  border-bottom: 1.5px solid gainsboro;
+}
+
+.select-privilege {
+  max-width: fit-content;
+}
+
+.custom-checkbox {
+  padding-left: 15px;
+  padding-right: 15px;
+}

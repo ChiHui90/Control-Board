@@ -1,0 +1,10 @@
+__MACOSX
+.vscode/*.*
+cbvenv
+.DS_Store
+*.py[co]
+*.sqlite
+Pulling.log
+Pushing.log
+logs
+Config.ini
