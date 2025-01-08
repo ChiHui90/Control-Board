@@ -883,7 +883,7 @@ def create_cb():
         return "IoTtalk V2 is not supported", 400
     except Exception as err:
         api_logger.exception(err)
-        if -1 is not cb.p_id:
+        if -1 != cb.p_id:
             delete_proj_ag(cb.p_id, api_logger)
         cb.delete()
         return "Internal server error", 500
