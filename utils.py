@@ -6,6 +6,8 @@ import uuid
 import json
 import asyncio
 import time
+import socket
+import datetime
 
 import zmq
 
@@ -925,3 +927,56 @@ def set_fn_ag(p_id, na_info, logger):
     except Exception as err:
         logger.exception(err)
         return False, "Send request to query NA failed, check API log."
+
+def change_rules_ag(cb, logger):
+    logger.info('\tTimestamp\t--> Function change_rules_ag')
+
+    '''
+    Worker function to register new rules to AG given a cb entity and logger.
+
+    Args:
+        cb: The CB Entity object containing rule_set and cb_id.
+        logger: Logger object for logging events and errors.
+
+    Returns:
+        tuple: A tuple containing status code (int) and message (str).
+            - (True, "Success") if the operation succeeds.
+            - (False, "Error") if the connection to the socket fails.
+            - (False, "Error") for other exceptions.
+    '''
+    try:
+        rules = {}  # Initialize an empty dictionary to store rules
+        for rule in cb.rule_set:
+            # rule.time_open = rule.time_open.strftime("%H:%M:%S")
+            # rule.time_close = rule.time_close.strftime("%H:%M:%S")
+
+            # Prepare sensor data sorted by sensor_index
+            sen_data = [sen_rule.to_dict() for sen_rule in rule.sensor_set]
+            sorted_sen_data = sorted(sen_data, key=lambda d: d['sensor_index'])
+
+            rule_dict = rule.to_dict()
+            rule_dict["time_open"] = rule.time_open.strftime("%H:%M:%S") 
+            rule_dict["time_close"] = rule.time_close.strftime("%H:%M:%S")
+            rule_dict["sensors_data"] = sorted_sen_data 
+
+            rules[rule.df_order] = rule_dict
+
+        socket_path = f"/tmp/cb_sa_socket_{cb.cb_id}"
+        logger.info("Attempting to send new rules via socket at %s", socket_path)
+
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.connect(socket_path)
+
+            data = json.dumps(rules)
+            print("change_rules_ag start: ", datetime.datetime.now().strftime("%H:%M:%S.%f"))
+            client.sendall(data.encode())
+ 
+            response = client.recv(1024)
+
+        return True, "Successfully registered new rules"
+    except ConnectionRefusedError:
+        logger.exception("Connection to CB_SA unix socket failed. Ensure CB_SA is running.")
+        return False, "CB_SA Unix Socket Connection Error"
+    except Exception as err:
+        logger.exception("An unexpected error occurred: %s", err)
+        return False, "Unexpected Error"

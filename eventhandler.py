@@ -29,6 +29,7 @@ from utils import create_proj_ag, delete_proj_ag, get_proj_ag
 from utils import create_do_ag, delete_do_ag
 from utils import register_ag, deregister_ag, bind_device_ag
 from utils import get_na_ag, delete_na_ag, set_fn_ag, create_na_ag, set_multi_sensor_fn_ag
+from utils import change_rules_ag
 from models import cb_db
 from models import CBElement, CB_Account, CB, CB_Sensor
 from enums import SensorDataEnum, ActuatorDataEnum
@@ -234,6 +235,12 @@ def set_rules(cb_id):
                     
         cb_db.commit()
         #email_notifier.notify_user(title, rules, accessible_users)
+        if cb.ag_token != "NotCreated":
+            status, _ = change_rules_ag(cb, api_logger)
+            if status:
+                print("new rules set successfully!, old SA")
+                return f"Configuration Saved", 200
+
         if cb_id in running_cb:
             status = deregister_ag(running_cb[cb_id].ag_token, api_logger)
             if not status:
@@ -254,7 +261,7 @@ def set_rules(cb_id):
             api_logger.exception("Error creating new rule, Change User configuraion failed, check API logs")
             return "Internal Server Error", 500
         cb_db.commit()
-        print("new rules set successfully!")
+        print("new rules set successfully!, new SA")
         # time.sleep(3)
         return 'Configuration Saved', 200
     except WrongSettingError:
@@ -720,6 +727,12 @@ def refresh_cb(cb_id):
         cb.status = True
 
         if cb.ag_token != "NotCreated":
+            status, _ = change_rules_ag(cb, api_logger)
+            if status:
+                print("Refresh CB Success, old SA")
+                return f"Refresh CB Success", 200
+
+        if cb.ag_token != "NotCreated":
             status = deregister_ag(cb.ag_token, api_logger)
             if not status:
                 api_logger.exception(f"Deregister CB {cb.cb_name} failed")
@@ -747,7 +760,7 @@ def refresh_cb(cb_id):
             if rule.rule_id not in running_status:
                 running_status[rule.rule_id] = default_status
         cb_db.commit()
-        api_logger.info(f"Refresh CB, DM Name: {dm_name}")
+        api_logger.info(f"Refresh CB, DM Name: {dm_name}, new SA")
 
         #title = f"ControlBoard {cb.cb_name} is refreshed by {session['user']}, new CBElements as follows\n"
         #rules = [rule.to_dict() for rule in cb.rule_set] #TODO CB_Sensor to dict if need email notifier
@@ -1150,7 +1163,8 @@ def oauth2_callback():
         token_response = oauth2_client.iottalk.authorize_access_token()
 
         # Parse the received ID token
-        user_info = oauth2_client.iottalk.parse_id_token(token_response)
+        nonce = token_response["userinfo"]["nonce"]
+        user_info = oauth2_client.iottalk.parse_id_token(token_response, nonce=nonce)
         print(user_info)
     except Exception as err:
         api_logger.exception(err)

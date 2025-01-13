@@ -1,5 +1,9 @@
 from pickle import FALSE
 import time
+import os
+import select
+import socket
+import queue
 import uuid
 import datetime
 import zmq
@@ -10,7 +14,7 @@ import re, time, json, threading, requests, traceback
 import paho.mqtt.client as mqtt
 
 class AG_SA():
-    def __init__(self, sa_id, config, mac_addr, sa_name, rules):
+    def __init__(self, sa_id, config, mac_addr, sa_name, rules, data_queue: queue.Queue):
         print('\n[',time.time(),']','  CB_SA  Function init')
         '''
         Initialization of a CB_SA
@@ -46,6 +50,7 @@ class AG_SA():
         self.sa_id = int(sa_id)
         self.config = config
         self.rules = rules
+        self.data_queue = data_queue
         if mac_addr != 'None':
             self.mac_addr = mac_addr
         else:
@@ -109,9 +114,9 @@ class AG_SA():
         if self.MQTT_broker: 
             DAN.profile['mqtt_enable'] = True
 
-        print('\n[',time.time(),']','  CB_SA  Function device_registration_with_retry')
+        print('[',time.time(),']','  CB_SA  Function device_registration_with_retry')
         result = DAN.device_registration_with_retry(f'http://{{config["iottalk_server"]}}:9999', self.mac_addr)
-        print('\n[',time.time(),']','  CB_SA  Function device_registration_with_retry end')
+        print('[',time.time(),']','  CB_SA  Function device_registration_with_retry end')
         print("result : ", result)
         self.on_register(result)
 
@@ -123,7 +128,7 @@ class AG_SA():
 
         not_bind = 1
         timestamp = time.time()
-        print('\n[',time.time(),']','  CB_SA  line 121 ESM bind')
+        print('[',time.time(),']','  CB_SA  line 121 ESM bind')
         while not_bind:
             if time.time() - timestamp > 1: break
             try:
@@ -138,10 +143,10 @@ class AG_SA():
                 #print(e)
                 time.sleep(0.1)
         
-        print('\n[',time.time(),']','  CB_SA  line 136 before ESM sleep')
+        print('[',time.time(),']','  CB_SA  line 136 before ESM sleep')
         
         time.sleep(0.6) # essential! Wait for ESM project restart!
-        print('\n[',time.time(),']','  CB_SA  line 139 after waiting ESM')
+        print('[',time.time(),']','  CB_SA  line 139 after waiting ESM')
 
 
     ####### MQTT #####
@@ -200,7 +205,7 @@ class AG_SA():
     ############
 
     def recover(self):
-        print('\n[',time.time(),']','  CB_SA  Function recover')
+        print('[',time.time(),']','  CB_SA  Function recover')
         '''
         Recover SA CBElements & generate Rule status.
 
@@ -243,7 +248,7 @@ class AG_SA():
         return
 
     def is_timer_valid(self, weekday_setup, time_open_setup, time_close_setup):
-        print('\n[',time.time(),']','  CB_SA  Function is_timer_valid')
+        print('[',time.time(),']','  CB_SA  Function is_timer_valid')
         '''
         check if current time is in [time_open, time_close]
 
@@ -281,7 +286,7 @@ class AG_SA():
         return 0 # time condition false
 
     def is_duty_valid(self, rule_id, duty_pos, duty_neg):
-        print('\n[',time.time(),']','  CB_SA  Function is_duty_valid')
+        print('[',time.time(),']','  CB_SA  Function is_duty_valid')
         '''
         check if duty has been set, and current time is needs open/close
         Notice : if setup(pos+neg) <10 it will not work because CB_SA.py time.sleep
@@ -319,7 +324,7 @@ class AG_SA():
             return 0 # actuator off
 
     def is_sensor_set(self, comparison_open_setup, comparison_close_setup, threshold_open_setup, threshold_close_setup):
-        print('\n[',time.time(),']','  CB_SA  Function is_sensor_set')
+        print('[',time.time(),']','  CB_SA  Function is_sensor_set')
         '''
         check if sensor condition has been set
 
@@ -338,7 +343,7 @@ class AG_SA():
         return 1
 
     def pre_processing(self, rule_id, tmp_rule): 
-        print('\n[',time.time(),']','  CB_SA  Function pre_processing')
+        print('[',time.time(),']','  CB_SA  Function pre_processing')
         '''
         to check timer and duty then create different rules to push to DAN
 
@@ -405,7 +410,7 @@ class AG_SA():
         return pre_pro_rule
 
     def check_rules(self): 
-        print('\n[',time.time(),']','  CB_SA  Function check_rules')
+        print('[',time.time(),']','  CB_SA  Function check_rules')
         '''
         Rule checker for all rules of this SA.
         Iteratively executed to generate status and open / close actuators.
@@ -416,6 +421,20 @@ class AG_SA():
         '''
         try:
             #print("self.rules.items() : ",self.rules.items())
+
+            # check if new rule is coming, if yes, update self.rules
+            while not self.data_queue.empty():
+                rule_str: str = self.data_queue.get()
+                rule_dict = json.loads(rule_str)
+                for df_order in rule_dict:
+                    rule_time_open = datetime.datetime.strptime(rule_dict[df_order]["time_open"], "%H:%M:%S").time()
+                    rule_time_close = datetime.datetime.strptime(rule_dict[df_order]["time_close"], "%H:%M:%S").time()
+                    rule_dict[df_order]["time_open"] = rule_time_open
+                    rule_dict[df_order]["time_close"] = rule_time_close
+                print("???" * 10)
+                print(datetime.datetime.now().strftime("%H:%M:%S.%f"), " 使用新規則: ", rule_dict)
+                self.rules = rule_dict
+
             for df_order, rule in self.rules.items():
                 status = self.status[rule["rule_id"]]
                 prev_status = status["prev_status"]
@@ -426,9 +445,9 @@ class AG_SA():
                 # #print("\n\nBBB rule : ",rule,"\n\n")
                 actuator_df = "CBElement-TI" + str(df_order)
                 sensor_df = "CBElement-O" + str(df_order)
-                print('\n[',time.time(),']','  CB_SA before pull : ')
+                print('[',time.time(),']','  CB_SA before pull : ')
                 self.data = DAN.pull(sensor_df)
-                print('\n[',time.time(),']','  CB_SA  data : ', self.data)
+                print('[',time.time(),']','  CB_SA  data : ', self.data)
                 '''
                 data here:  # be careful here if one of the sensor is None then data will be None
                 type1 : sensor val list
@@ -443,7 +462,7 @@ class AG_SA():
                 if self.data is None:
                     print("No sensor data pulled")
                 else:
-                    print('\n[',time.time(),']','  CB_SA  after DAN.pull')
+                    print('[',time.time(),']','  CB_SA  after DAN.pull')
                     # #print("\n\n line 428 \n\n")
                     if len(self.data) == 1:
                         self.data = [self.data]
@@ -505,30 +524,90 @@ class AG_SA():
 
                 if type(push_rule) is not tuple: push_rule=[push_rule]
                 if self.MQTT_broker: 
-                    print('\n[',time.time(),']','  CB_SA  before mqtt_pub')
+                    print('[',time.time(),']','  CB_SA  before mqtt_pub')
                     self.mqtt_pub(self.mqttc, self.device_id, actuator_df, push_rule)
-                    print('\n[',time.time(),']','  CB_SA  after mqtt_pub')
+                    print('[',time.time(),']','  CB_SA  after mqtt_pub')
                 else: 
-                    print('\n[',time.time(),']','  CB_SA  before DAN.push')
+                    print('[',time.time(),']','  CB_SA  before DAN.push')
                     DAN.push(actuator_df, push_rule)
-                    print('\n[',time.time(),']','  CB_SA  after DAN.push')
+                    print('[',time.time(),']','  CB_SA  after DAN.push')
 
                 status["prev_status"] = now_status # be aware of call by reference and call by value
 
                 #print("CCC status ", status)
                 self.socket.send_json(status)
-                print('\n[',time.time(),']','  CB_SA  finish check_rules')
+                print('[',time.time(),']','  CB_SA  finish check_rules')
                 
         except Exception as err:
             print("Checking CBElement failed, ", err)
         return
 
+class SocketServer:
+    def __init__(self, socket_path: str, data_queue: queue.Queue):
+        self.socket_path = socket_path
+        self.data_queue = data_queue
+        self.running = True
+
+    def start(self):
+        self.server_thread = threading.Thread(target=self.run_server)
+        self.server_thread.daemon = True
+        self.server_thread.start()
+
+    def run_server(self):
+        if os.path.exists(self.socket_path):
+            os.remove(self.socket_path)
+
+        server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        server.bind(self.socket_path)
+        server.listen(3)
+        server.setblocking(False)
+
+        print("Unix socket server listening at ", self.socket_path)
+
+        try:
+            while self.running:
+                readable, _, _ = select.select([server], [], [], 0.5)
+                if readable:
+                    conn, _ = server.accept()
+                    data = conn.recv(1024).decode()
+                    if data:
+                        print(f"!!!" * 10)
+                        print(datetime.datetime.now().strftime("%H:%M:%S.%f"), " 收到新規則: ", data)
+                        self.data_queue.put(data)  # put data into Queue
+                        conn.send(data.encode())
+                    conn.close()
+        except Exception as e:
+            print("Socket server error: ", e)
+        finally:
+            server.close()
+            if os.path.exists(self.socket_path):
+                os.remove(self.socket_path)
+
+    def stop(self):
+        self.running = False
+        self.server_thread.join()
+
+sa_id = '{sa_id}'
+config = {config}
+mac_addr = '{mac_addr}'
+sa_name = '{sa_name}'
+rules = {rules}
+
+data_queue = queue.Queue()
+
+# start Socket Server
+socket_path = "/tmp/cb_sa_socket_" + str(sa_id)
+print(socket_path)
+socket_server = SocketServer(socket_path, data_queue)
+socket_server.start()
+
 print('\n[',time.time(),']','  CB_SA  --------------\n')
-sa = AG_SA('{sa_id}', {config}, '{mac_addr}', '{sa_name}', {rules})
+sa = AG_SA(sa_id, config, mac_addr, sa_name, rules, data_queue)
 sa.recover()
 
 while True:
-    print('\n[',time.time(),']','  CB_SA  Function while')
+    print("\n", "*" * 30)
+    print('[',time.time(),']','  CB_SA  Function while')
     #print('\nstart checking rules of', sa.sa_id)
     sa.check_rules()
     time.sleep(1)
