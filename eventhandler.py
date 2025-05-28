@@ -67,12 +67,19 @@ def render_index():
         Status code: 200 / 500.
     '''
     try:
-        if not session.get("token"):
-            redirect_url = url_for("api.oauth2_callback", _external=True)
-            print("url: ", redirect_url)
-            print("redirect to oauth login page")
-            ask_login = {"prompt": "login"}
-            return oauth2_client.iottalk.authorize_redirect(redirect_url, **ask_login)
+        '''
+            先不要有登入
+        '''
+        # if not session.get("token"):
+        #     redirect_url = url_for("api.oauth2_callback", _external=True)
+        #     print("url: ", redirect_url)
+        #     print("redirect to oauth login page")
+        #     ask_login = {"prompt": "login"}
+        #     return oauth2_client.iottalk.authorize_redirect(redirect_url, **ask_login)
+
+        session["token"] = "f3tf3hmw0lnO0LZN5IuwUF7wtQ5XsxcoloPugwKkbuRLn~cK27cbF7BWL32O7GHTNVwemZgN8JAb5El11lDRP_ik7qooBRT8FfIWSRUyTSt_VD7g3bXveOP5L/6_BxtAQg+h+zMkUub40PDEDTeveCBjQHy8C8iK "
+        session["user"] = "bob900123@gmail.com"
+
         user = CB_Account.get(account=session["user"])
         if None is user:
             raise NotFoundError
