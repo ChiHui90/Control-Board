@@ -605,20 +605,23 @@ def refresh_cb(cb_id):
         # Create CBElements for each NA
         src, dst = dict(), dict()
         na_ids = list()
-        for na in NAs:
-            # na: [<na_id>, <na_name>, <na_idx>]
+        lock = threading.Lock()
+
+        def process_na(na):
             state, na_info = get_na_ag(cb.p_id, na[0], api_logger)
             if not state:
                 raise CCMAPIFailError
-            # print("=============")
-            # print("na_info: ", na_info)
-            # print("=============")
-            order, input_device, output_device = 0, list(), list()
+
+            order = 0
+            input_device = []
+            output_device = []
 
             first_idf = na_info["input"][0]
             if first_idf["df_name"].startswith("CBElement"):
-                set_fn_ag(cb.p_id, na_info, api_logger)
-                na_ids.append(na[0])
+                # set_fn_ag(cb.p_id, na_info, api_logger)
+                threading.Thread(target=set_fn_ag, args=(cb.p_id, na_info, api_logger))
+                with lock:
+                    na_ids.append(na[0])
                 order = int(first_idf["df_name"].replace("CBElement-TI", ""))
 
                 for odf in na_info["output"]:
@@ -632,16 +635,67 @@ def refresh_cb(cb_id):
                         order = int(odf["df_name"].replace("CBElement-O", ""))
                         break
                 if cb_related:
-                    set_multi_sensor_fn_ag(cb.p_id, na_info, api_logger) # new set_fn_ag for setting sensor_idf and multi_join funtion
+                    # set_multi_sensor_fn_ag(cb.p_id, na_info, api_logger)
+                    threading.Thread(target=set_multi_sensor_fn_ag, args=(cb.p_id, na_info, api_logger))
                     for idf in na_info["input"]:
                         input_device.append([idf["dfo_id"], idf["df_name"], idf["alias_name"].replace("-I", "")])
-            if len(input_device):
-                src[order] = input_device
-            if len(output_device):
-                dst[order] = output_device
+
+            with lock:
+                if len(input_device):
+                    src[order] = input_device
+                if len(output_device):
+                    dst[order] = output_device
+
+        threads = []
+        for na in NAs:
+            t = threading.Thread(target=process_na, args=(na,))
+            threads.append(t)
+            t.start()
+
+        for t in threads:
+            t.join()
+
         print("src : ", src)
         print("dst : ", dst)
         nas = ",".join(str(na_id) for na_id in na_ids)
+
+        # for na in NAs:
+        #     # na: [<na_id>, <na_name>, <na_idx>]
+        #     state, na_info = get_na_ag(cb.p_id, na[0], api_logger)
+        #     if not state:
+        #         raise CCMAPIFailError
+        #     # print("=============")
+        #     # print("na_info: ", na_info)
+        #     # print("=============")
+        #     order, input_device, output_device = 0, list(), list()
+
+        #     first_idf = na_info["input"][0]
+        #     if first_idf["df_name"].startswith("CBElement"):
+        #         set_fn_ag(cb.p_id, na_info, api_logger)
+        #         na_ids.append(na[0])
+        #         order = int(first_idf["df_name"].replace("CBElement-TI", ""))
+
+        #         for odf in na_info["output"]:
+        #             if not odf["df_name"].startswith("CBElement"):
+        #                 output_device.append([odf["dfo_id"], odf["df_name"], odf["alias_name"].replace("-O", "")])
+        #     else:
+        #         cb_related = False
+        #         for odf in na_info["output"]:
+        #             if odf["df_name"].startswith("CBElement"):
+        #                 cb_related = True
+        #                 order = int(odf["df_name"].replace("CBElement-O", ""))
+        #                 break
+        #         if cb_related:
+        #             set_multi_sensor_fn_ag(cb.p_id, na_info, api_logger) # new set_fn_ag for setting sensor_idf and multi_join funtion
+        #             for idf in na_info["input"]:
+        #                 input_device.append([idf["dfo_id"], idf["df_name"], idf["alias_name"].replace("-I", "")])
+        #     if len(input_device):
+        #         src[order] = input_device
+        #     if len(output_device):
+        #         dst[order] = output_device
+        # print("src : ", src)
+        # print("dst : ", dst)
+        # nas = ",".join(str(na_id) for na_id in na_ids)
 
         print("nas : ",nas)
         
