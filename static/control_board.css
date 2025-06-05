@@ -1,10 +1,11 @@
-html, body {
+html,
+body {
   background-color: #F6F4FB;
   min-width: 500px;
   height: auto;
 }
 
-.fieldName > a{
+.fieldName>a {
   overflow-x: hidden;
   /*width: 80px;*/
   text-align: center;
@@ -12,7 +13,7 @@ html, body {
   white-space: nowrap;
 }
 
-.one-item-dropdown > button::after{
+.one-item-dropdown>button::after {
   border: 0px;
 }
 
@@ -44,7 +45,7 @@ html, body {
 }
 
 .custom-card-body {
-  overflow-y:scroll;
+  overflow-y: scroll;
   max-height: 110vh;
 }
 
@@ -56,7 +57,7 @@ html, body {
 }
 
 /* Hide Model Body */
-.hide-body {  
+.hide-body {
   padding: 0;
 }
 
@@ -140,17 +141,17 @@ html, body {
   padding: 2px 0px;
 }
 
-.sensor-list > div {
+.sensor-list>div {
   padding-left: 0px;
   padding-right: 1px;
 }
 
-.sensor-list > div > div > button {
+.sensor-list>div>div>button {
   padding-top: 0px;
   padding-bottom: 0px;
 }
 
-.sensor-list > div > span {
+.sensor-list>div>span {
   padding-top: 5px;
   font-weight: bold;
   font-size: 1.1rem;
@@ -205,4 +206,20 @@ html, body {
 .custom-checkbox {
   padding-left: 15px;
   padding-right: 15px;
+}
+
+.loading-modal-content {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+.loading-spinner-container {
+  min-height: 200px;
+}
+
+.loading-spinner {
+  width: 5rem !important;
+  height: 5rem !important;
+  font-size: 3rem !important;
 }

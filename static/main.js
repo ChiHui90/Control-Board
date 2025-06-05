@@ -24,7 +24,9 @@ var app = new Vue({
     manageMode: false,  // Switch bwtween CB page & manage page
     managePage: false, // Used to switch active state between User/CB management
     privilege: privilege,  // Whether current user is a superuser.
+    default_cb: default_cb,
     IoTtalkURL: "",
+    showLoading: false,
     newCBIcon: null,
     statusTrackWorker: -1,  // Timer ID for periodically calling current_data
     cbTrackWorker: -1,
@@ -128,6 +130,46 @@ var app = new Vue({
     }
     return;
   },
+  mounted: function() {
+    if (typeof default_cb !== "undefined" && default_cb) {
+      this.showLoading = true;
+      var req;
+      if (this.manageMode) {
+        req = "all";
+      } else {
+        req = "self";
+      }
+      this.getAvailableCBs(req)
+        .then((res) => {
+          var cbList = res;
+          var cb = cbList.find(cb => cb.text === default_cb);
+          if (cb) {
+              // window.localStorage.setItem("cb", JSON.stringify(found));
+              // window.localStorage.setItem("privilege", privilege);
+              // window.location = "/";
+              this.onRefreshCB(cb)
+                .then((res) => {
+                  this.refreshCBWorker(cb);
+                  cb.status = true;
+                  window.localStorage.setItem("cb", JSON.stringify(cb));
+                  window.localStorage.setItem("privilege", this.privilege);
+                  console.log("goooooooooooooooooooooood: ");
+                  window.location.href = "/";
+                  this.showLoading = false;
+                  return
+                })
+                .catch((err) => {
+                  console.log(err);
+                })
+          } else {
+            alert("ControlBoard not found");
+            this.showLoading = false;
+            window.location.href = "/"
+          }
+                })
+        return;
+    }
+  },
   computed: {
     maxPinnedCBs: function () {
       return Math.floor(this.width / 80) - 1;
@@ -148,6 +190,19 @@ var app = new Vue({
     */
     projectURL: function (cb) {
       return this.IoTtalkURL.concat(cb);
+    },
+    goHome: function() {
+      window.localStorage.removeItem("cb");
+      window.localStorage.removeItem("");
+      window.location.href = "/"
+    },
+    makeToast(variant, title, body) {
+      this.$bvToast.toast(body, {
+        title: title,
+        variant: variant,
+        solid: true,
+        autoHideDelay: 3000,
+      });
     },
     getAvailableCBs: function (account) {
       return new Promise(function (resolve, reject) {
@@ -247,6 +302,7 @@ var app = new Vue({
           if (err.response.status != 403) {
             alert(err.response.data);
           }
+          this.showLoading = false;
           window.location = "/";
         })
     },
@@ -377,15 +433,16 @@ var app = new Vue({
       return;
     },
     onGUIOpen: function (cb) {
+      this.showLoading = true;
       console.log("test");
       this.onRefreshCB(cb)
         .then((res) => {
-          console.log(res);
           this.refreshCBWorker(cb);
           cb.status = true;
           window.localStorage.setItem("cb", JSON.stringify(cb));
           window.localStorage.setItem("privilege", this.privilege);
-          window.open("/");
+          this.showLoading = false;
+          window.location.href = "/";
         })
         .catch((err) => {
           if (err.response.status === 400) {
@@ -393,6 +450,7 @@ var app = new Vue({
           } else {
             console.log(err);
           }
+          this.showLoading = false;
         })
     },
     onSwitchManagePage: function () {
@@ -424,11 +482,14 @@ var app = new Vue({
     onCBCreate: function (action) {
       console.log(action);
       if (1 === action) {
+        this.showLoading = true;
         axios
           .post("/cb/create_cb", this.newCB)
           .then((res) => {
             console.log("Response of creating CB", res);
             this.refreshCBWorker();
+            this.showLoading = false;
+            window.location = "/";
             window.open(this.projectURL(this.newCB)).focus();
             this.newCB = "";
           })
@@ -442,10 +503,13 @@ var app = new Vue({
     },
     onCBDelete: function (cbID, action) {
       if (1 === action) {
+        this.showLoading = true;
         axios
           .post("/cb/delete_cb", cbID)
           .then((res) => {
-            console.log(res);
+            this.showLoading = false;
+            window.location = "/";
+            this.makeToast('success', "Success", "成功刪除專案");
             window.clearInterval(this.statusTrackWorker);
             this.statusTrackWorker = -1;
             this.refreshCBWorker();
@@ -523,6 +587,7 @@ var app = new Vue({
         console.timeEnd('onSAConfirm');
       });
       this.statusTrackWorker = setInterval(this.refreshStatusWorker, 1000);
+      this.makeToast('success', "Success", "成功儲存配置");
       return;
     },    
     onSAReset: function () {
