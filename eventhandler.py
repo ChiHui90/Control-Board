@@ -4,6 +4,7 @@ import json
 import requests
 import time
 import uuid
+import threading
 
 
 from flask import abort
@@ -46,10 +47,14 @@ def requires_login(f):
     @wraps(f)
     @orm.db_session
     def decorated_function(*args, **kwargs):
-        if session.get("token"):
-            return f(*args, **kwargs)
-        else:
-            return abort(403)
+        '''
+            先不用登入
+        '''
+        return f(*args, **kwargs)
+        # if session.get("token"):
+        #     return f(*args, **kwargs)
+        # else:
+        #     return abort(403)
     return decorated_function
 
 
@@ -83,7 +88,68 @@ def render_index():
         user = CB_Account.get(account=session["user"])
         if None is user:
             raise NotFoundError
-        return render_template("main.html", userLevel=user.privilege), 200
+        return render_template("main.html", userLevel=user.privilege, default_cb=""), 200
+    except NotFoundError:
+        api_logger.exception("Account recorded in session does not exist")
+        abort(500)
+    except Exception as err:
+        api_logger.exception(err)
+        abort(500)
+
+@apis.route('/<string:cb_name>', methods=["GET"])
+@orm.db_session
+def render_index_cb(cb_name):
+    '''
+    Render Function of main page with specified cb name.
+
+    Args:
+        cb_name: controlboard name
+
+    Returns:
+        Rendered HTML template with CB info (to be picked up by JS).
+    '''
+    try:
+        data = {
+            "url": None,
+            "error": None
+        }
+
+        cb = CB.get(cb_name=cb_name)
+        if cb:
+            data["url"] = f'http://{env_config["env"]["host"]}:{env_config["env"]["port"]}/cb/gui/{cb_name}'
+            return jsonify(data)
+        else:
+            data["error"] = "Specified project not found."
+            return jsonify(data), 404
+    except Exception as err:
+        api_logger.exception(err)
+        data["error"] = str(err)
+        return jsonify(data), 500
+
+@apis.route('/cb/gui/<string:cb_name>', methods=["GET"])
+@requires_login
+@orm.db_session
+def open_cb_gui(cb_name):
+    '''
+    Render Function of main page with specified cb name.
+
+    Args:
+        cb_name: controlboard name
+
+    Returns:
+        Rendered HTML template with CB info (to be picked up by JS).
+    '''
+    try:
+        session["user"] = "bob900123@gmail.com"
+        user = CB_Account.get(account=session["user"])
+        if None is user:
+            raise NotFoundError
+        
+        cb = CB.get(cb_name=cb_name)
+        if not cb:
+            return "<h1>沒有此項目</h1>"
+        else:
+            return render_template("main.html", userLevel=user.privilege, default_cb=cb_name), 200
     except NotFoundError:
         api_logger.exception("Account recorded in session does not exist")
         abort(500)
@@ -534,7 +600,6 @@ def refresh_cb(cb_id):
         else:
             raise NotImplementedError
         print("NAs : ", NAs)
-        import pdb; pdb.set_trace
         if not len(NAs):
             raise NotFoundError
         # Create CBElements for each NA
@@ -733,17 +798,20 @@ def refresh_cb(cb_id):
 
         cb.status = True
 
+        # 判斷 ag 是否已經建立
         if cb.ag_token != "NotCreated":
+            print("己建立 ag")
             status, _ = change_rules_ag(cb, api_logger)
             if status:
                 print("Refresh CB Success, old SA")
                 return f"Refresh CB Success", 200
 
-        if cb.ag_token != "NotCreated":
             status = deregister_ag(cb.ag_token, api_logger)
             if not status:
                 api_logger.exception(f"Deregister CB {cb.cb_name} failed")
                 abort(500, "Deregister AG CB failed, check api log and AG")
+        else:
+            print("未建立 ag")
 
         # Register device
         status, ag_token = register_ag(cb, api_logger)
@@ -754,7 +822,7 @@ def refresh_cb(cb_id):
         cb.ag_token = ag_token
 
         # Bind device to DO
-        time.sleep(2)  # Uncomment this if the IoTtalk Server cannot create DO in time.
+        time.sleep(0.5)  # Uncomment this if the IoTtalk Server cannot create DO in time.
         do_id = cb.do_id.split(",")
         status, dm_name = bind_device_ag(cb.mac_addr, cb.p_id, do_id, api_logger)
         if not status:
@@ -803,6 +871,7 @@ def disable_cb(cb_id):
         CB[cb_id].status = not CB[cb_id].status
         return "Set Maintanance done", 200
     except Exception as err:
+        print("disable_cb::::::::::::::::", err)
         api_logger.exception(err)
         abort(500)
 
