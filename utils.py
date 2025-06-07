@@ -15,6 +15,8 @@ import zmq
 from pony import orm
 from tornado import ioloop
 from zmq.eventloop.zmqstream import ZMQStream
+from langchain_openai import ChatOpenAI
+from langchain_ollama import ChatOllama
 
 
 from config import env_config, reg_config, use_v1
@@ -140,71 +142,71 @@ def connect_db(logger, cb_db):
     return
 
 
-@orm.db_session
-def test_db(logger):
-    '''
-    Write dummy data to database for testing connection.
+# @orm.db_session
+# def test_db(logger):
+#     '''
+#     Write dummy data to database for testing connection.
 
-    Args:
-        logger: Logger object to write log in.
+#     Args:
+#         logger: Logger object to write log in.
 
-    Returns: None
-    '''
-    try:
-        test_account = CB_Account(
-            account="pcs54784@gmail.com",
-            privilege="1",
-        )
+#     Returns: None
+#     '''
+#     try:
+#         test_account = CB_Account(
+#             account="pcs54784@gmail.com",
+#             privilege="1",
+#         )
 
-        dummy_account = CB_Account(
-            account="example@gmail.com",
-            privilege="0",
-        )
+#         dummy_account = CB_Account(
+#             account="example@gmail.com",
+#             privilege="0",
+#         )
 
-        # admin = CB_Account(
-        #     account="yb",
-        #     privilege="2",
-        # )
+#         # admin = CB_Account(
+#         #     account="yb",
+#         #     privilege="2",
+#         # )
 
-        test_cb = CB(
-            cb_name="test_cb1",
-            icon="0_landscape.svg"
-        )
+#         test_cb = CB(
+#             cb_name="test_cb1",
+#             icon="0_landscape.svg"
+#         )
 
-        dummy_cb = CB(
-            cb_name="test_cb",
-            icon="0_landscape.svg"
-        )
+#         dummy_cb = CB(
+#             cb_name="test_cb",
+#             icon="0_landscape.svg"
+#         )
 
-        test_sa = CB_SA(
-            sa_name="test_sa",
-            ag_token="testagtoken",
-            mac_addr=str(uuid.uuid4()),
-            p_id=-1,
-            do_id="1234567",
-            cb=test_cb,
-            pinned=True
-        )
+#         test_sa = CB_SA(
+#             sa_name="test_sa",
+#             ag_token="testagtoken",
+#             mac_addr=str(uuid.uuid4()),
+#             p_id=-1,
+#             do_id="1234567",
+#             cb=test_cb,
+#             pinned=True
+#         )
 
-        test_rule = CBElement(
-            actuator_alias="test_actuator",
-            actuator_df="test_df",
-            df_order=0,
-            duty_pos=0,
-            sa=test_sa,
-            mode='Sensor'
-        )
+#         test_rule = CBElement(
+#             actuator_alias="test_actuator",
+#             actuator_df="test_df",
+#             df_order=0,
+#             duty_pos=0,
+#             sa=test_sa,
+#             mode='Sensor'
+#         )
 
-        test_account.cb_set.add(test_cb)
-        dummy_account.cb_set.add(dummy_cb)
-        test_cb.sa_set.add(test_sa)
-        test_sa.rule_set.add(test_rule)
+#         test_account.cb_set.add(test_cb)
+#         dummy_account.cb_set.add(dummy_cb)
+#         test_cb.sa_set.add(test_sa)
+#         test_sa.rule_set.add(test_rule)
 
-        logger.info('\tTest database connection......done')
-    except Exception as err:
-        logger.exception(err)
+#         logger.info('\tTest database connection......done')
+#     except Exception as err:
+#         logger.exception(err)
 
-    return
+#     return
 
 
 status_logger = make_logger("CB_status", "status")
@@ -980,3 +982,27 @@ def change_rules_ag(cb, logger):
     except Exception as err:
         logger.exception("An unexpected error occurred: %s", err)
         return False, "Unexpected Error"
+
+def generate_data(controlboard, provider, model, messages, api_key, base_url = None):
+    if provider == "openai":
+        if not base_url:
+            llm = ChatOpenAI(model=model, api_key= api_key)
+        else:
+            llm = ChatOpenAI(model=model, api_key= api_key, base_url=base_url)
+            
+    elif provider == "ollama":
+        if not base_url:
+            llm = ChatOllama(model=model)
+        else:
+            llm = ChatOllama(model=model, base_url=base_url)
+
+    try:
+        response = llm.stream(messages)
+        for line in response:
+            if not line:
+                continue
+            yield line.content
+            
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
+        yield str(e)

@@ -8,6 +8,8 @@
   <!-- Load required Bootstrap and BootstrapVue CSS -->
   <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap@4.5.0/dist/css/bootstrap.min.css" />
   <link type="text/css" rel="stylesheet" href="https://unpkg.com/bootstrap-vue@2.21.2/dist/bootstrap-vue.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <link href="https://cdn.jsdelivr.net/npm/primeicons@7.0.0/primeicons.min.css" rel="stylesheet">
   <!-- Load polyfills to support older browsers -->
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es2015%2CIntersectionObserver"
     crossorigin="anonymous"></script>
@@ -15,6 +17,7 @@
   <!-- Load Vue followed by BootstrapVue -->
   <!-- Develop version -->
   <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
+  <script src="https://unpkg.com/element-ui/lib/index.js"></script>
   <!-- <script src="https://unpkg.com/vuex@3.4.0/dist/vuex.js"></script> -->
   <!-- Production version -->
   <!-- <script src="https://unpkg.com/vue@latest/dist/vue.min.js"></script> -->
@@ -24,6 +27,7 @@
   <script src="https://unpkg.com/bootstrap-vue@2.21.2/dist/bootstrap-vue-icons.min.js"></script>
   <!-- Axios Library -->
   <script src="https://unpkg.com/axios@0.21.1/dist/axios.min.js"></script>
+
   <script type="text/javascript">
     var privilege = {{ userLevel }};
     // var default_cb = {{ default_cb }};
@@ -34,6 +38,8 @@
 
 <body>
   <div id=app>
+
+    <b-toast id="bv-toast-container"></b-toast>
 
     <b-modal id="overlay-modal" v-model="showLoading" hide-footer hide-header centered no-close-on-backdrop
       no-close-on-esc static dialog-class="loading-modal-dialog" content-class="loading-modal-content" @hide.prevent>
@@ -51,32 +57,33 @@
       </b-navbar-nav>
       <div class="ml-auto">
         <b-navbar-nav>
-          <!-- <b-nav-item class="system-button" v-if="privilege" v-on:click="onSwitchManage"><b><% manageMode? "Admin": "User" %></b></b-nav-item> -->
-          <b-nav-item v-if="!mainPage" class="system-button custom-nav-item"
+          <b-nav-item v-if="currentPage !== 0" class="system-button custom-nav-item"
             v-on:click="goHome"><b>Home</b></b-nav-item>
-          <b-nav-item class="system-button custom-nav-item" v-on:click="onSAConfirm"><b>Save</b></b-nav-item>
-          <b-nav-item class="system-button custom-nav-item" v-on:click="onSAReset"><b>Reset</b></b-nav-item>
-          <b-nav-item v-if="mainPage" class="system-button custom-nav-item"
-            v-on:click="onLogout"><b>Logout</b></b-nav-item>
+          <b-nav-item class="system-button custom-nav-item" v-if="currentPage === 1"
+            v-on:click="onSAConfirm"><b>Save</b></b-nav-item>
+          <b-nav-item class="system-button custom-nav-item" v-if="currentPage === 1"
+            v-on:click="onSAReset"><b>Reset</b></b-nav-item>
+          <b-nav-item class="system-button custom-nav-item" v-on:click="goLLMGUI"><b>LLM</b></b-nav-item>
+          <b-nav-item class="system-button custom-nav-item" v-on:click="onLogout"><b>Logout</b></b-nav-item>
         </b-navbar-nav>
       </div>
     </b-navbar>
 
     <!-- ControlBoard tabs -->
-    <b-card title="Card Title" no-body class="card mb-3">
+    <b-card title="Card Title" no-body class="card mb-3" v-if="currentPage === 0 || currentPage === 1">
       <b-card-header header-tag="nav">
         <b-nav card-header tabs>
-          <span v-if="!manageMode && controlboards.length === 0" style="font-weight: bolder;">
+          <span v-if="currentPage === 1 && controlboards.length === 0" style="font-weight: bolder;">
             <span v-if="privilege">Please create a ControlBoard</span>
             <span v-else>Contact Us for ControlBoard Deployment!</span>
           </span>
           <b-nav-item v-for="(cb, index) in controlboards"
-            v-if="!manageMode && index < maxPinnedCBs && currentCB.value > 0" v-bind:active="cb.value===currentCB.value"
-            v-on:click="onSwitchCB(cb)" class="fieldName">
+            v-if="currentPage === 1 && index < maxPinnedCBs && currentCB.value > 0"
+            v-bind:active="cb.value===currentCB.value" v-on:click="onSwitchCB(cb)" class="fieldName">
             <% cb.text %>
           </b-nav-item>
           <b-nav-item-dropdown text="More" right lazy
-            v-if="!manageMode && currentCB.value > 0 && maxPinnedCBs < controlboards.length">
+            v-if="currentPage === 1 && currentCB.value > 0 && maxPinnedCBs < controlboards.length">
             <b-dropdown-group id="dropdown-group-1">
               <template v-slot:header>
                 <div class="d-flex justify-content-between">
@@ -90,10 +97,10 @@
           </b-nav-item-dropdown>
 
           <!-- Admin Page Card Title -->
-          <b-nav-item v-if="manageMode" v-bind:active="managePage" v-on:click="onSwitchManagePage">
+          <b-nav-item v-if="currentPage === 0" v-bind:active="manageTab" v-on:click="onSwitchManageTab">
             User
           </b-nav-item>
-          <b-nav-item v-if="manageMode" v-bind:active="!managePage" v-on:click="onSwitchManagePage">
+          <b-nav-item v-if="currentPage === 0" v-bind:active="!manageTab" v-on:click="onSwitchManageTab">
             ControlBoard
           </b-nav-item>
 
@@ -101,21 +108,7 @@
       </b-card-header>
 
       <b-card-body class="text-center custom-card-body">
-
-        <!-- FOR DEBUG -->
-        <!-- <div
-            v-for="(cb, index) in controlboards"
-            v-if="!manageMode && index < maxPinnedCBs && currentCB.value > 0 && cb.value===currentCB.value"
-            ><% cb %><% index %></div> -->
-
-
-
-        <div v-for="(setting, index) in settings" class="setting-card" v-if="!manageMode && currentCB.value > 0">
-
-
-          <!-- FOR DEBUG -->
-          <!-- <% currentCB %>
-              <% setting %> <% index %> -->
+        <div v-for="(setting, index) in settings" class="setting-card" v-if="currentPage === 1 && currentCB.value > 0">
 
           <!-- Actuator Row -->
           <actuator-row v-bind:actuator="setting.actuator" v-bind:status="setting.status"></actuator-row>
@@ -250,19 +243,19 @@
         </div>
 
         <!-- Admin Page -->
-        <div v-if="manageMode && privilege">
+        <div v-if="currentPage === 0 && privilege">
           <b-row class="text-left">
             <!-- User Tab -->
-            <b-col v-if="managePage"><b>User</b></b-col>
-            <b-col v-if="managePage" cols="6"><b>Email</b></b-col>
+            <b-col v-if="manageTab"><b>User</b></b-col>
+            <b-col v-if="manageTab" cols="6"><b>Email</b></b-col>
 
             <!-- ControlBoard Tab -->
             <b-col v-else><b>ControlBoards</b></b-col>
-            <b-col v-if="managePage"><b>Identity</b></b-col>
+            <b-col v-if="manageTab"><b>Identity</b></b-col>
             <b-col v-else><b>Actions</b></b-col>
           </b-row>
 
-          <b-row class="text-left divide-top divide-bottom" v-for="(user, index) in users" v-if="managePage">
+          <b-row class="text-left divide-top divide-bottom" v-for="(user, index) in users" v-if="manageTab">
             <!-- User Tab Content -->
             <b-col>
               <b-link v-b-modal="'modal'+index" size="sm" variant="outline-primary"
@@ -299,7 +292,7 @@
           </b-row>
 
           <!-- ControlBoard Tab Content -->
-          <b-row class="text-left divide-top divide-bottom" v-if="!managePage">
+          <b-row class="text-left divide-top divide-bottom" v-if="!manageTab">
             <b-col>
               <b-link v-bind:disabled="hasIncompleteCBs" v-b-modal="'CreateCB'" style="font-size:smaller">Add
                 ControlBoard</b-link>
@@ -322,7 +315,7 @@
             </b-modal>
           </b-row>
 
-          <b-row class="text-left divide-top divide-bottom" v-for="(cb, index) in controlboards" v-if="!managePage">
+          <b-row class="text-left divide-top divide-bottom" v-for="(cb, index) in controlboards" v-if="!manageTab">
             <b-col>
               <!-- <span v-bind:class="cb.value===maintanance?'bg-warning': ''" style="background-clip:content-box"> <% cb.text %> </span> -->
               <span>
@@ -332,7 +325,7 @@
             </b-col>
             <b-col>
               <b-link v-b-modal="'deleteCB'+index" size="sm" variant="outline-primary" class="mr-3">Delete</b-link>
-              <b-link class="mr-3" v-on:click=onGUIOpen(cb)>GUI</b-link>
+              <b-link class="mr-3" v-on:click=goCBGUI(cb)>GUI</b-link>
               <b-link v-on:click="onCBConfig(cb)" size="sm"
                 v-bind:variant="cb.status?'outline-primary' : 'secondary'">Configuration</b-link>
               <b-modal v-bind:id="'deleteCB'+index" title="Delete ControlBoard" hide-backdrop content-class="shadow"
@@ -355,9 +348,77 @@
         </div>
       </b-card-body>
     </b-card>
+
+    <!-- LLM GUI -->
+    <div id="chatBox" v-if="currentPage === 2">
+      <div class="row">
+        <div class="col-4">
+          <div class="form-item">
+            <label class="form-label">ControlBoard</label>
+            <el-select v-model="selectedControlBoard" placeholder="Select" class="form-select">
+              <el-option v-for="cb in controlboards" :key="cb.value" :label="cb.text" :value="cb" />
+            </el-select>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="form-item"></div>
+        </div>
+        <div class="col-4">
+          <div class="form-item"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-4">
+          <div class="form-item">
+            <label class="form-label">Provider</label>
+            <el-select v-model="selectedProvider" placeholder="Select" class="form-select">
+              <el-option v-for="(providerData, key) in providersData" :key="key" :value="key" :lable="key" />
+            </el-select>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="form-item">
+            <label class="form-label">Model</label>
+            <el-select v-model="selectedModel" class="form-select" placeholder="Select">
+              <el-option v-for="model in providersData[selectedProvider].models" :key="model" :value="model"
+                :label="model" />
+            </el-select>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="form-item">
+            <label class="form-label">API KEY</label>
+            <!-- <input type="text" class="form-control select" v-model="apiKey" @input="onApiKeyInput"> -->
+            <el-input v-model="apiKey" placeholder="" @input="onApiKeyInput"></el-input>
+          </div>
+        </div>
+      </div>
+      <div id="chatContainer">
+        <div id="chatArea" ref="chatArea">
+          <div v-for="message in messages" :key="message.content">
+            <ChatMessage :message="message" />
+          </div>
+          <div v-if="currentOutputMessageContent">
+            <ChatMessage :message="{ role: 'ai', content: currentOutputMessageContent }" />
+          </div>
+        </div>
+      </div>
+      <div id="inputArea">
+        <textarea class="form-control" rows="1" id="chatInput" v-model="chatInput" @input="autoResize"
+          placeholder="How can I help you today?" ref="chatTextarea"></textarea>
+        <button type="button" class="btn btn-primary" @click="submitChat" id="submitButton"
+          :disabled="isChatButtonDisabled">
+          <span class="arrow">&gt;</span>
+        </button>
+      </div>
+    </div>
+
   </div>
   <script type="text/javascript" src="/static/components.js?v=14"></script>
   <script type="text/javascript" src="/static/main.js?v=7"></script>
+  <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+    crossorigin="anonymous"></script> -->
   <script>
     onSAConfirm();
     onSettingSaveChange();

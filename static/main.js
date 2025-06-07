@@ -20,9 +20,8 @@ var app = new Vue({
   delimiters: ["<%", "%>"],
   // store,
   data: {
-    mainPage: true,    // In main page or pop-uped maintain page
-    manageMode: false,  // Switch bwtween CB page & manage page
-    managePage: false, // Used to switch active state between User/CB management
+    currentPage: 0,     // 0: HomePage, 1: CB GUI, 2: LLM GUI
+    manageTab: false,  // false: CB page, true: manage page
     privilege: privilege,  // Whether current user is a superuser.
     default_cb: default_cb,
     IoTtalkURL: "",
@@ -78,7 +77,22 @@ var app = new Vue({
     },
     accessibleCBs: [],
     backupSettings: [],
-    settings: []
+    settings: [],
+    providersData: null,
+    selectedControlBoard: null,
+    selectedProvider: "openai",
+    selectedModel: "gpt-4o-mini", 
+    apiKey: "",
+    chatInput: "Why is the sky blue?",
+    messages: [
+      {
+        role: "ai",
+        content: "Hello, I am your assistant. How can I help you?",
+      },
+    ],
+    currentOutputMessageContent: "",
+    apiKey: "",
+    isChatButtonDisabled: false,
   },
   created: function () {
     // Procedures to correctly render data:
@@ -103,17 +117,18 @@ var app = new Vue({
       this.controlboards = [cb];
       this.privilege = window.localStorage.getItem("privilege");
       this.currentCB = cb;
-      this.mainPage = false;
+      this.selectedControlBoard = cb;
+      this.currentPage = 1;
       this.refreshRuleWorker();
 
       window.addEventListener("beforeunload", function () {
         // clear the cb stored in local storage
-        window.localStorage.clear();
+        window.localStorage.removeItem("cb");
+        window.localStorage.removeItem("privilege");
       })
 
     } else {  // Main page
       if (this.privilege) {
-        this.manageMode = true;
         console.log("get user");
         this.getAllUsers()
           .then((users) => {
@@ -128,17 +143,29 @@ var app = new Vue({
       this.refreshCBWorker();  // Close call current_data when website opened
       this.cbTrackWorker = setInterval(this.cbTrackWorker, 60000);
     }
+    this.getLLMConfigs()
+        .then((data) => {
+          this.providersData = data;
+          for (let provider in this.providersData) {
+            console.log("provider: ", provider);
+            let api = provider.api_key;
+            if (api === undefined) {
+              api = window.localStorage.getItem(provider);
+              console.log("gggggggggggeeeeeeeeeeeettttttt: ", api);
+            }
+            this.providersData[provider].api_key = api;
+          }
+          this.apiKey = this.providersData[this.selectedProvider].api_key;
+        })
+        .catch((err) => {
+          console.log(err);
+        })
     return;
   },
   mounted: function() {
     if (typeof default_cb !== "undefined" && default_cb) {
       this.showLoading = true;
-      var req;
-      if (this.manageMode) {
-        req = "all";
-      } else {
-        req = "self";
-      }
+      var req = "all";
       this.getAvailableCBs(req)
         .then((res) => {
           var cbList = res;
@@ -184,6 +211,18 @@ var app = new Vue({
       return status;
     }
   },
+  watch: {
+    messages() {
+      this.scrollToBottom();
+    },
+    currentOutputMessageContent() {
+      this.scrollToBottom();
+    },
+    selectedProvider(provider) {
+      this.selectedModel = this.providersData[provider].models[0];
+      this.apiKey = this.providersData[provider].api_key;
+    }
+  },
   methods: {
     /* API data getter Methods, including CB, SA, Rule, Status, User, 
     *  Reachable Project
@@ -192,9 +231,9 @@ var app = new Vue({
       return this.IoTtalkURL.concat(cb);
     },
     goHome: function() {
+      this.currentPage = 0;
       window.localStorage.removeItem("cb");
-      window.localStorage.removeItem("");
-      window.location.href = "/"
+      window.location.href = "/";
     },
     makeToast(variant, title, body) {
       this.$bvToast.toast(body, {
@@ -265,23 +304,31 @@ var app = new Vue({
           })
       })
     },
+    getLLMConfigs: function () {
+      return new Promise(function (resolve, reject) {
+        axios
+          .get("/llm/config")
+          .then((res) => {
+            resolve(res.data);
+          })
+          .catch((err) => {
+            reject(err);
+          })
+      })
+    },
     /* Refresh routine procedures, including CB, SA, Rule, Status */
     refreshCBWorker: function (next_currentCB) {
-      var req;
-      if (this.manageMode) {
-        req = "all";
-      } else {
-        req = "self";
-      }
+      var req = "all";
       this.getAvailableCBs(req)
         .then((controlboards) => {
-          console.log(controlboards);
           this.controlboards = controlboards;
           if (controlboards.length === 0) {
             this.currentCB = {
               "value": 0,
               "status": true
             };
+          } else {
+            this.selectedControlBoard = this.currentCB || this.controlboards[0];
           }
           if (next_currentCB !== undefined) {
             controlboards.forEach((cb) => {
@@ -402,37 +449,7 @@ var app = new Vue({
       });
       return;
     },
-    onSwitchManage: function () {
-      if (this.manageMode === false) {
-        window.clearInterval(this.statusTrackWorker);
-        this.statusTrackWorker = -1;
-        this.manageMode = true;
-      }
-      else if (this.controlboards.length) {
-        allReady = true;
-        this.controlboards.forEach((cb) => {
-          if (!cb.status) {
-            console.log(cb);
-            window.open(this.projectURL(cb.text));
-            allReady = false;
-          }
-        })
-        if (allReady && this.currentCB.value !== 0) {
-          this.onRefreshCB(this.currentCB)
-            .then((res) => {
-              this.manageMode = !this.manageMode;
-              console.log(res);
-              this.refreshCBWorker();
-            })
-            .catch((err) => {
-              console.log(err);
-              window.open(this.projectURL(this.currentCB.text))
-            })
-        }
-      }
-      return;
-    },
-    onGUIOpen: function (cb) {
+    goCBGUI: function (cb) {
       this.showLoading = true;
       console.log("test");
       this.onRefreshCB(cb)
@@ -453,8 +470,11 @@ var app = new Vue({
           this.showLoading = false;
         })
     },
-    onSwitchManagePage: function () {
-      this.managePage = !this.managePage;
+    goLLMGUI: function () {
+      this.currentPage = 2;
+    },
+    onSwitchManageTab: function () {
+      this.manageTab = !this.manageTab;
       return;
     },
     onSwitchCB: function (selected) {
@@ -470,8 +490,7 @@ var app = new Vue({
       window.clearInterval(this.statusTrackWorker);
       this.statusTrackWorker = -1;
       this.currentProject = selected;
-      this.manageMode = false;
-      this.managePage = false;
+      this.manageTab = false;
       this.refreshSAWorker()
       this.statusTrackWorker = setInterval(this.refreshStatusWorker, 1000);
       return;
@@ -509,7 +528,6 @@ var app = new Vue({
           .then((res) => {
             this.showLoading = false;
             window.location = "/";
-            this.makeToast('success', "Success", "成功刪除專案");
             window.clearInterval(this.statusTrackWorker);
             this.statusTrackWorker = -1;
             this.refreshCBWorker();
@@ -921,6 +939,7 @@ var app = new Vue({
           cbs.forEach((cb) => {
             this.accessibleCBs.push(cb.value);
           });
+
         })
         .catch((err) => {
           if (err.response) {
@@ -940,6 +959,76 @@ var app = new Vue({
             console.log("logout failed");
         })
     },
+    autoResize() {
+      const ta = this.$refs.chatTextarea;
+      ta.style.height = "auto"; // reset height
+      ta.style.height = ta.scrollHeight + "px"; // fit content
+    },
+    async submitChat() {
+      const content = this.chatInput;
+      if (!content) {
+        console.log("No content to send");
+        this.makeToast('danger', "Error", "Missing required field: message");
+        return;
+      }
+      this.chatInput = "";
+      this.$nextTick(() => {
+        this.autoResize();
+      });
+      const inputMessage = { role: "user", content };
+      this.messages.push(inputMessage);
+      console.log("llm is thinking...");
+      this.isChatButtonDisabled = true;
+      const response = await fetch("/llm/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          controlboard: this.selectedControlBoard ? this.selectedControlBoard.text : null,
+          provider: this.selectedProvider,
+          api_key: this.apiKey,
+          messages: this.messages,
+          model: this.selectedModel,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        this.makeToast('danger', "Error", error.error);
+        user_prompt = this.messages.pop();
+        this.chatInput = user_prompt.content;
+        this.isChatButtonDisabled = false;
+        return;
+      }
+      const reader = response.body.getReader();
+      let output = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        output += new TextDecoder().decode(value);
+        this.currentOutputMessageContent = output;
+
+        if (done) {
+          break;
+        }
+      }
+      this.messages.push({
+        role: "ai",
+        content: this.currentOutputMessageContent,
+      });
+      this.currentOutputMessageContent = "";
+      this.isChatButtonDisabled = false;
+    },
+    onApiKeyInput() {
+      this.providersData[this.selectedProvider].api_key = this.apiKey;
+      window.localStorage.setItem(this.selectedProvider, this.apiKey);
+    },
+    scrollToBottom() {
+      this.$nextTick(() => {
+        const chatArea = this.$refs.chatArea;
+        if (chatArea) {
+          chatArea.scrollTop = chatArea.scrollHeight;
+        }
+      });
+    }
     // onUpdateSensorCod({ ruleID, data }) {
     //   // TODO
     //   //   sensorCod:{

@@ -223,3 +223,121 @@ body {
   height: 5rem !important;
   font-size: 3rem !important;
 }
+
+#chatBox {
+  width: 60%;
+  margin: 0 auto;
+  /* 將元素水平置中 */
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  /* 可選：添加陰影 */
+}
+
+/* #chatContainer {
+  display: flex;
+  flex-direction: column;
+  height: 62vh;
+  max-height: 75%;
+  overflow-y: auto;
+} */
+
+#chatArea {
+  display: flex;
+  flex-direction: column;
+  height: 62vh;
+  max-height: 75%;
+  overflow-y: auto;
+}
+
+#inputArea {
+  display: flex;
+  height: 100px;
+  width: 100%;
+  padding: 10px;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+#chatInput {
+  min-height: 40px;
+  max-height: 120px;
+  padding: 10px;
+  margin-right: 10px;
+  overflow: hidden;
+  resize: none;
+  flex: 1;
+  height: auto;
+}
+
+.message {
+  display: flex;
+  justify-content: flex-start;
+  padding: 10px;
+  margin: 10px;
+  border-radius: 10px;
+}
+
+.messageContent {
+  margin: 10px;
+  padding: 15px;
+  width: 80%;
+}
+
+.userMessage {
+  background-color: #F3FCF9;
+}
+
+.userAvatar {
+  min-width: 2rem;
+  background-color: #97E1C8;
+}
+
+.agentMessage {
+  background-color: #F6FAFF;
+}
+
+.agentAvatar {
+  min-width: 2rem;
+  background-color: #AECAFA;
+}
+
+.avatar {
+  vertical-align: middle;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 10px;
+}
+
+/* .select {
+  margin: 5px 0px 5px 0px;
+} */
+
+#submitButton {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 18px;
+  border: none;
+  padding: 0;
+}
+
+.form-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.form-select {
+  width: 100%;
+}
+
+.form-label {
+  margin-top: 10px;
+}

@@ -243,3 +243,41 @@ Vue.component('select-projects', {
         </div>
     `
 })
+
+Vue.component("chatmessage", {
+  props: {
+    message: {
+      type: Object,
+      required: true,
+      validator: (msg) => {
+        return (
+          msg && typeof msg.role === "string" && typeof msg.content === "string"
+        );
+      },
+    },
+  },
+  computed: {
+    messageClass() {
+      return this.message.role === "user"
+        ? "message userMessage"
+        : "message agentMessage";
+    },
+    avatarClass() {
+      return this.message.role === "user" ? "userAvatar" : "agentAvatar";
+    },
+    avatarIconClass() {
+      return this.message.role === "user" ? "pi pi-user" : "pi pi-desktop";
+    },
+    isValidMessage() {
+      return this.message && this.message.role && this.message.content;
+    },
+  },
+  template: /*html*/ `
+        <div :class="messageClass" v-if="isValidMessage">
+            <div :class="['avatar', avatarClass]">
+                <i :class="[avatarIconClass, 'avatarIcon']"></i>
+            </div>
+            <div class="messageContent">{{ message.content }}</div>
+        </div>
+    `,
+});

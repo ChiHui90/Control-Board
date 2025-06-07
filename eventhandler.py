@@ -5,6 +5,7 @@ import requests
 import time
 import uuid
 import threading
+from collections import defaultdict
 
 
 from flask import abort
@@ -15,6 +16,7 @@ from flask import request
 from flask import session
 from flask import redirect
 from flask import url_for
+from flask import Response
 from pony import orm
 
 
@@ -31,6 +33,7 @@ from utils import create_do_ag, delete_do_ag
 from utils import register_ag, deregister_ag, bind_device_ag
 from utils import get_na_ag, delete_na_ag, set_fn_ag, create_na_ag, set_multi_sensor_fn_ag
 from utils import change_rules_ag
+from utils import generate_data
 from models import cb_db
 from models import CBElement, CB_Account, CB, CB_Sensor
 from enums import SensorDataEnum, ActuatorDataEnum
@@ -50,11 +53,13 @@ def requires_login(f):
         '''
             先不用登入
         '''
-        return f(*args, **kwargs)
-        # if session.get("token"):
-        #     return f(*args, **kwargs)
-        # else:
-        #     return abort(403)
+        session["token"] = "f3tf3hmw0lnO0LZN5IuwUF7wtQ5XsxcoloPugwKkbuRLn~cK27cbF7BWL32O7GHTNVwemZgN8JAb5El11lDRP_ik7qooBRT8FfIWSRUyTSt_VD7g3bXveOP5L/6_BxtAQg+h+zMkUub40PDEDTeveCBjQHy8C8iK "
+        session["user"] = "bob900123@gmail.com"
+
+        if session.get("token"):
+            return f(*args, **kwargs)
+        else:
+            return abort(403)
     return decorated_function
 
 
@@ -96,7 +101,7 @@ def render_index():
         api_logger.exception(err)
         abort(500)
 
-@apis.route('/<string:cb_name>', methods=["GET"])
+@apis.route('/create/<string:cb_name>', methods=["GET"])
 @orm.db_session
 def render_index_cb(cb_name):
     '''
@@ -114,13 +119,15 @@ def render_index_cb(cb_name):
             "error": None
         }
 
-        cb = CB.get(cb_name=cb_name)
-        if cb:
+        url = f'http://{env_config["env"]["host"]}:{env_config["env"]["port"]}/cb/create_cb'
+        response = requests.post(url, data=cb_name)
+
+        if response.status_code == 200:
             data["url"] = f'http://{env_config["env"]["host"]}:{env_config["env"]["port"]}/cb/gui/{cb_name}'
             return jsonify(data)
         else:
-            data["error"] = "Specified project not found."
-            return jsonify(data), 404
+            data["error"] = response.text
+            return jsonify(data), 200
     except Exception as err:
         api_logger.exception(err)
         data["error"] = str(err)
@@ -140,7 +147,6 @@ def open_cb_gui(cb_name):
         Rendered HTML template with CB info (to be picked up by JS).
     '''
     try:
-        session["user"] = "bob900123@gmail.com"
         user = CB_Account.get(account=session["user"])
         if None is user:
             raise NotFoundError
@@ -947,6 +953,10 @@ def create_cb():
     new_cb = request.get_data().decode("utf-8")
     mac_addr = str(uuid.uuid4())
 
+    cb = CB.get(cb_name=new_cb)
+    if cb:
+        return f"The same name cannot be used : {new_cb}", 400
+
     cb = CB(cb_name=new_cb, ag_token="NotCreated", mac_addr=mac_addr,
             p_id=-1, do_id="-1", status=False, na_id="-1", dedicated=True)
 
@@ -1029,7 +1039,7 @@ def create_cb():
         if -1 != cb.p_id:
             delete_proj_ag(cb.p_id, api_logger)
         cb.delete()
-        return "Internal server error", 500
+        return str(err), 500
 
     cb_db.commit()
     return f"Create SA succeeded with cb_db id: {cb.cb_id}", 200
@@ -1342,3 +1352,58 @@ def logout():
     session.pop("token")
 
     return "logout successfully", 200
+
+@apis.route('/llm/config', methods=['GET'])
+@orm.db_session
+def get_llm():
+    '''
+    Logout current user by deleting session and redirect to Account System's login page.
+
+    Args:
+        None
+
+    Returns:
+        message indicating logout successfully
+    '''
+    data = {}
+    for provider in ["ollama", "openai"]:
+        pro = env_config[provider]
+        p = {
+            "models": [m.strip() for m in pro["models"].split(",")],
+            "api_key": pro.get("api_key")
+        }
+        data[provider] = p
+
+    return jsonify(data), 200
+
+@apis.route("/llm/chat", methods=["POST"])
+def ask_llm():
+    data: dict = request.get_json()
+    print("ask llm data: ", data)
+    required_fields = ["controlboard", "provider", "model", "messages"]
+    for field in required_fields:
+        if not data.get(field):
+            return jsonify({"error": f"Missing required field: {field}"}), 400
+    if data.get("provider") in ["openai"] and not data.get("api_key"):
+        return jsonify({"error": f"Missing required field: api_key"}), 400
+
+    controlboard = data.get("controlboard")
+    provider = data.get("provider")  
+    model = data.get('model')  
+    messages = data.get('messages')
+    api_key = data.get('api_key')
+
+    base_url = None
+    if env_config[provider].get("host"):
+        base_url = env_config[provider].get("host") 
+        if env_config[provider].get("port"):
+            base_url += ":" + env_config[provider].get("port")
+  
+    # 1111111111111111111111
+    ai = {"role": "ai", "content": "你是一個翻譯大師，將英文翻譯成繁體中文中文。"}
+    messages = [ai, data.get('messages')[-1]]
+    # 1111111111111111111111111
+    return Response(
+        generate_data(controlboard, provider, model, messages, api_key, base_url=base_url), 
+        mimetype='text/event-stream'
+    )
