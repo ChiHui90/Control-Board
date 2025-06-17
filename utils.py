@@ -566,12 +566,15 @@ def register_ag(cb, logger):
         new_sa = open('./CB_SA.py', 'r').read().format(
             sa_id=cb.cb_id, config=reg_config, mac_addr=cb.mac_addr, sa_name=cb.cb_name, rules=rules)
         # new_sa = open('./DAI.py', 'r').read()
-        time.sleep(0.02)
+        # time.sleep(0.02)
+        # data = {
+        #     "version": int(env_config["IoTtalk"]["version"]),
+        #     "code": new_sa
+        # }
         data = {
-            "version": int(env_config["IoTtalk"]["version"]),
+            "version": 1,
             "code": new_sa
         }
-
         state, response = _post('create_device', data, logger)
         if not state:
             raise CCMAPIFailError
@@ -636,9 +639,6 @@ def bind_device_ag(mac_addr, p_id, do_id, logger):
                     "do_id": do_id[0]
                 }
             }
-            # print("sleep 1 seconds...")
-            # time.sleep(0.2)
-            # print("sleep done")
             status, response = _post('ccm_api', data, logger)
             if not status:
                 raise CCMAPIFailError
@@ -663,6 +663,7 @@ def bind_device_ag(mac_addr, p_id, do_id, logger):
                 }
                 status, response = _post("ccm_api", data, logger)
                 if not status:
+                    # print("66666666666666666666666666666666666666644444444444444")
                     raise CCMAPIFailError
             logger.info("\tBind device\t......done")
             return status, response["result"]
