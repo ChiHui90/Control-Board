@@ -115,7 +115,7 @@ class AG_SA():
             DAN.profile['mqtt_enable'] = True
 
         print('[',time.time(),']','  CB_SA  Function device_registration_with_retry')
-        result = DAN.device_registration_with_retry(f'http://{{config["iottalk_server"]}}:9999', self.mac_addr)
+        result = DAN.device_registration_with_retry(f'https://{{config["iottalk_server"]}}', self.mac_addr)
         print('[',time.time(),']','  CB_SA  Function device_registration_with_retry end')
         print("result : ", result)
         self.on_register(result)
@@ -192,7 +192,9 @@ class AG_SA():
         if status[0]: print('topic:{{}}, status:{{}}'.format(topic, status))
 
     def on_register(self, r):
+        print("lllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllllll")
         print('Server: {{}}\nDevice name: {{}}\nRegister successfully.'.format(r['server'], r['d_name']))
+        print(r)
 
     def MQTT_config(self, client):
         client.username_pw_set(self.MQTT_User, self.MQTT_PW)
@@ -434,6 +436,7 @@ class AG_SA():
                 print("???" * 10)
                 print(datetime.datetime.now().strftime("%H:%M:%S.%f"), " 使用新規則: ", rule_dict)
                 self.rules = rule_dict
+                self.recover()
 
             for df_order, rule in self.rules.items():
                 status = self.status[rule["rule_id"]]
@@ -534,7 +537,7 @@ class AG_SA():
 
                 status["prev_status"] = now_status # be aware of call by reference and call by value
 
-                #print("CCC status ", status)
+                print("CCCCCCCCCCCCCCCCCCCC status ", status)
                 self.socket.send_json(status)
                 print('[',time.time(),']','  CB_SA  finish check_rules')
                 

@@ -393,23 +393,12 @@
           </div>
         </div>
       </div>
-      <div id="chatContainer">
-        <div id="chatArea" ref="chatArea">
-          <div v-for="message in messages" :key="message.content">
-            <ChatMessage :message="message" />
-          </div>
-          <div v-if="currentOutputMessageContent">
-            <ChatMessage :message="{ role: 'ai', content: currentOutputMessageContent }" />
-          </div>
-        </div>
-      </div>
       <div id="inputArea">
-        <textarea class="form-control" rows="1" id="chatInput" v-model="chatInput" @input="autoResize"
+        <textarea class="form-control" rows="1" id="chatInput" v-model="chatInput"
           placeholder="How can I help you today?" ref="chatTextarea"></textarea>
-        <button type="button" class="btn btn-primary" @click="submitChat" id="submitButton"
-          :disabled="isChatButtonDisabled">
-          <span class="arrow">&gt;</span>
-        </button>
+        <el-button type="primary" @click="submitChat" id="submitButton" :disabled="isChatButtonDisabled" round>
+          Start
+        </el-button>
       </div>
     </div>
 

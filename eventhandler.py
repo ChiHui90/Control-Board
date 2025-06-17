@@ -32,7 +32,7 @@ from utils import create_proj_ag, delete_proj_ag, get_proj_ag
 from utils import create_do_ag, delete_do_ag
 from utils import register_ag, deregister_ag, bind_device_ag
 from utils import get_na_ag, delete_na_ag, set_fn_ag, create_na_ag, set_multi_sensor_fn_ag
-from utils import change_rules_ag
+from utils import change_rules_ag, get_project_info
 from utils import generate_data
 from models import cb_db
 from models import CBElement, CB_Account, CB, CB_Sensor
@@ -101,7 +101,7 @@ def render_index():
         api_logger.exception(err)
         abort(500)
 
-@apis.route('/create/<string:cb_name>', methods=["GET"])
+@apis.route('/<string:cb_name>', methods=["GET"])
 @orm.db_session
 def render_index_cb(cb_name):
     '''
@@ -113,11 +113,24 @@ def render_index_cb(cb_name):
     Returns:
         Rendered HTML template with CB info (to be picked up by JS).
     '''
+    if cb_name == "favicon.ico":
+        return "ok", 200
+    
     try:
         data = {
             "url": None,
             "error": None
         }
+
+        state, response = get_project_info(cb_name, api_logger)
+        if state:
+            if len(response["result"]["ido"]) == 0 or len(response["result"]["odo"]) == 0:
+                data["error"] = "Please Fisrt Create Input Device Object or Output Device Object"
+                return jsonify(data), 200
+        else:
+            data["error"] = str(response)
+            return jsonify(data), 200
+        
 
         url = f'http://{env_config["env"]["host"]}:{env_config["env"]["port"]}/cb/create_cb'
         response = requests.post(url, data=cb_name)
@@ -566,8 +579,6 @@ def get_datum(cb_id):
             status = running_status[rule.rule_id]
             status["time"] = datetime.datetime.now().strftime("%H:%M")
             res_dict[rule.rule_id] = status
-        #print("res_dict : ")
-        #print(res_dict)
         return jsonify(res_dict), 200
     except NotFoundError:
         api_logger.warning(f"Specified CB ID {cb_id} not running")
@@ -624,8 +635,7 @@ def refresh_cb(cb_id):
 
             first_idf = na_info["input"][0]
             if first_idf["df_name"].startswith("CBElement"):
-                # set_fn_ag(cb.p_id, na_info, api_logger)
-                threading.Thread(target=set_fn_ag, args=(cb.p_id, na_info, api_logger))
+                set_fn_ag(cb.p_id, na_info, api_logger)
                 with lock:
                     na_ids.append(na[0])
                 order = int(first_idf["df_name"].replace("CBElement-TI", ""))
@@ -641,8 +651,7 @@ def refresh_cb(cb_id):
                         order = int(odf["df_name"].replace("CBElement-O", ""))
                         break
                 if cb_related:
-                    # set_multi_sensor_fn_ag(cb.p_id, na_info, api_logger)
-                    threading.Thread(target=set_multi_sensor_fn_ag, args=(cb.p_id, na_info, api_logger))
+                    set_multi_sensor_fn_ag(cb.p_id, na_info, api_logger)
                     for idf in na_info["input"]:
                         input_device.append([idf["dfo_id"], idf["df_name"], idf["alias_name"].replace("-I", "")])
 
@@ -881,9 +890,12 @@ def refresh_cb(cb_id):
             abort(500, f"Create CB {cb.cb_name} failed at registering device, check api log and AG")
         cb.ag_token = ag_token
 
+        print("ccccccccccrrrrrrrrrreeeeeeeaaaaaaaatttttttt: ", ag_token)
+
         # Bind device to DO
         time.sleep(0.5)  # Uncomment this if the IoTtalk Server cannot create DO in time.
         do_id = cb.do_id.split(",")
+        print("dodddddddddddiiiiiiiiiiiiiiiddddddd: ", do_id)
         status, dm_name = bind_device_ag(cb.mac_addr, cb.p_id, do_id, api_logger)
         if not status:
             deregister_ag(cb.ag_token, api_logger)
@@ -990,12 +1002,13 @@ def create_cb():
                         do_id.append(do["do_id"])
         if len(do_id) != 2:
             # Create Device Object
+            print("cccccccccccccccccreate device object")
             status, do_id = create_do_ag(p_id, iottalk_info["df_id"], "ControlBoard", api_logger)
             if not status:
                 cb.delete()
                 cb_db.commit()
                 abort(500, "Create CB failed at creating DO, check api log files and IoTtalk CCM.")
-
+        print("dddddddddddooooooooooooiiiiiiiiiiiiddddddddddd: ", do_id)
         status, project_info = get_proj_ag(new_cb, api_logger)
         # Fetch dfo ids
         dfo_ids = list()
@@ -1013,6 +1026,7 @@ def create_cb():
                 break
         for idf, odf in zip(cb_idf, cb_odf):
             dfo_ids.append([(cb_ido, idf["df_id"]), (cb_odo, odf["df_id"])])
+        start = time.time()
         for i, dfo_pair in enumerate(dfo_ids):
             state, res = create_na_ag(p_id, f"test{i}", i, dfo_pair, api_logger)
 
@@ -1027,6 +1041,7 @@ def create_cb():
             cb.do_id = str(do_id[0]) + ',' + str(do_id[1])
         else:
             cb.do_id = str(do_id)
+        print("oooooooooooooooooooooooooooooooo: ", f"@@@@{cb.do_id}@@@@")
         account = CB_Account.get(account=session["user"])
         account.cb_set.add(cb)
         cb.account_set.add(account)
@@ -1160,6 +1175,21 @@ def get_cb(usr_account):
     except Exception as err:
         api_logger.exception(err)
         abort(500, err)
+
+
+@apis.route('/cb/get_cb_id/<string:cb_name>', methods=['GET'])
+@requires_login
+@orm.db_session
+def get_cb_id(cb_name):
+    '''
+    '''
+    print(cb_name)
+    cb = CB.get(cb_name=cb_name)
+    if cb:
+        return jsonify({"cb_id": cb.cb_id}), 200
+    else:
+        api_logger.exception(f"No such CB: {cb_name}")
+        return jsonify({"error": f"No such CB: {cb_name}"}), 404
 
 
 @apis.route('/account/login', methods=['GET', 'POST'])
@@ -1366,13 +1396,17 @@ def get_llm():
         message indicating logout successfully
     '''
     data = {}
-    for provider in ["ollama", "openai"]:
+    active_provider = env_config["LLM"]["active_provider"]
+    active_provider = [p for p in active_provider.split(",") if p]
+    print(active_provider)
+    for provider in active_provider:
         pro = env_config[provider]
         p = {
             "models": [m.strip() for m in pro["models"].split(",")],
             "api_key": pro.get("api_key")
         }
         data[provider] = p
+    print("dddddddd: ", data)
 
     return jsonify(data), 200
 

@@ -80,18 +80,10 @@ var app = new Vue({
     settings: [],
     providersData: null,
     selectedControlBoard: null,
-    selectedProvider: "openai",
-    selectedModel: "gpt-4o-mini", 
+    selectedProvider: "ollama",
+    selectedModel: "llama3.1:8b", 
     apiKey: "",
-    chatInput: "Why is the sky blue?",
-    messages: [
-      {
-        role: "ai",
-        content: "Hello, I am your assistant. How can I help you?",
-      },
-    ],
-    currentOutputMessageContent: "",
-    apiKey: "",
+    chatInput: "",
     isChatButtonDisabled: false,
   },
   created: function () {
@@ -145,20 +137,22 @@ var app = new Vue({
     }
     this.getLLMConfigs()
         .then((data) => {
+          console.log("ddddddddddddddd: ", data)
           this.providersData = data;
           for (let provider in this.providersData) {
             console.log("provider: ", provider);
-            let api = provider.api_key;
+            let api = this.providersData[provider].api_key;
+            console.log("ttttttttttttttttt: ", this.providersData[provider])
             if (api === undefined) {
-              api = window.localStorage.getItem(provider);
-              console.log("gggggggggggeeeeeeeeeeeettttttt: ", api);
+              api = window.localStorage.getItem(provider) || "";
+              // console.log("gggggggggggeeeeeeeeeeeettttttt: ", api);
             }
             this.providersData[provider].api_key = api;
           }
           this.apiKey = this.providersData[this.selectedProvider].api_key;
         })
         .catch((err) => {
-          console.log(err);
+          console.log("Error: ", err);
         })
     return;
   },
@@ -212,12 +206,6 @@ var app = new Vue({
     }
   },
   watch: {
-    messages() {
-      this.scrollToBottom();
-    },
-    currentOutputMessageContent() {
-      this.scrollToBottom();
-    },
     selectedProvider(provider) {
       this.selectedModel = this.providersData[provider].models[0];
       this.apiKey = this.providersData[provider].api_key;
@@ -959,10 +947,9 @@ var app = new Vue({
             console.log("logout failed");
         })
     },
-    autoResize() {
-      const ta = this.$refs.chatTextarea;
-      ta.style.height = "auto"; // reset height
-      ta.style.height = ta.scrollHeight + "px"; // fit content
+    onApiKeyInput() {
+      this.providersData[this.selectedProvider].api_key = this.apiKey;
+      window.localStorage.setItem(this.selectedProvider, this.apiKey);
     },
     async submitChat() {
       const content = this.chatInput;
@@ -972,12 +959,6 @@ var app = new Vue({
         return;
       }
       this.chatInput = "";
-      this.$nextTick(() => {
-        this.autoResize();
-      });
-      const inputMessage = { role: "user", content };
-      this.messages.push(inputMessage);
-      console.log("llm is thinking...");
       this.isChatButtonDisabled = true;
       const response = await fetch("/llm/chat", {
         method: "POST",
@@ -993,7 +974,6 @@ var app = new Vue({
       if (!response.ok) {
         const error = await response.json();
         this.makeToast('danger', "Error", error.error);
-        user_prompt = this.messages.pop();
         this.chatInput = user_prompt.content;
         this.isChatButtonDisabled = false;
         return;
@@ -1004,31 +984,14 @@ var app = new Vue({
       while (true) {
         const { done, value } = await reader.read();
         output += new TextDecoder().decode(value);
-        this.currentOutputMessageContent = output;
+        console.log(output);
 
         if (done) {
           break;
         }
       }
-      this.messages.push({
-        role: "ai",
-        content: this.currentOutputMessageContent,
-      });
-      this.currentOutputMessageContent = "";
       this.isChatButtonDisabled = false;
     },
-    onApiKeyInput() {
-      this.providersData[this.selectedProvider].api_key = this.apiKey;
-      window.localStorage.setItem(this.selectedProvider, this.apiKey);
-    },
-    scrollToBottom() {
-      this.$nextTick(() => {
-        const chatArea = this.$refs.chatArea;
-        if (chatArea) {
-          chatArea.scrollTop = chatArea.scrollHeight;
-        }
-      });
-    }
     // onUpdateSensorCod({ ruleID, data }) {
     //   // TODO
     //   //   sensorCod:{
