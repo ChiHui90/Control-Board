@@ -386,7 +386,7 @@
           </div>
         </div>
         <div class="col-4">
-          <div class="form-item">
+          <div class="form-item" v-if="needApiKey">
             <label class="form-label">API KEY</label>
             <!-- <input type="text" class="form-control select" v-model="apiKey" @input="onApiKeyInput"> -->
             <el-input v-model="apiKey" placeholder="" @input="onApiKeyInput"></el-input>

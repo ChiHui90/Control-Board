@@ -37,10 +37,13 @@ from utils import generate_data
 from models import cb_db
 from models import CBElement, CB_Account, CB, CB_Sensor
 from enums import SensorDataEnum, ActuatorDataEnum
+from cb_agent.worklfow import build_workflow
+from cb_agent.model import GraphState
 
 
 api_logger = make_logger('API', 'API')
 apis = Blueprint('api', __name__)
+workflow = build_workflow()
 
 @apis.before_request
 def setup():
@@ -1367,13 +1370,6 @@ def oauth2_callback():
 @orm.db_session
 def logout():
     '''
-    Logout current user by deleting session and redirect to Account System's login page.
-
-    Args:
-        None
-
-    Returns:
-        message indicating logout successfully
     '''
     user = CB_Account.get(account=session["user"])
     user.access_token = "empty"
@@ -1397,34 +1393,31 @@ def get_llm():
     '''
     data = {}
     active_provider = env_config["LLM"]["active_provider"]
-    active_provider = [p for p in active_provider.split(",") if p]
-    print(active_provider)
+    active_provider = [p.strip() for p in active_provider.split(",") if p]
     for provider in active_provider:
         pro = env_config[provider]
         p = {
             "models": [m.strip() for m in pro["models"].split(",")],
-            "api_key": pro.get("api_key")
+            "api_key": pro.get("api_key"),
+            "need_api_key": True if pro.get("need_api_key") == "True" else False
         }
         data[provider] = p
-    print("dddddddd: ", data)
 
     return jsonify(data), 200
 
-@apis.route("/llm/chat", methods=["POST"])
-def ask_llm():
+@apis.route("/llm/cb_agent", methods=["POST"])
+def invoke_cb_agent():
     data: dict = request.get_json()
     print("ask llm data: ", data)
-    required_fields = ["controlboard", "provider", "model", "messages"]
+    required_fields = ["controlboard", "provider", "model", "user_input"]
     for field in required_fields:
         if not data.get(field):
             return jsonify({"error": f"Missing required field: {field}"}), 400
-    if data.get("provider") in ["openai"] and not data.get("api_key"):
-        return jsonify({"error": f"Missing required field: api_key"}), 400
 
     controlboard = data.get("controlboard")
     provider = data.get("provider")  
     model = data.get('model')  
-    messages = data.get('messages')
+    user_input = data.get('user_input')
     api_key = data.get('api_key')
 
     base_url = None
@@ -1432,12 +1425,28 @@ def ask_llm():
         base_url = env_config[provider].get("host") 
         if env_config[provider].get("port"):
             base_url += ":" + env_config[provider].get("port")
-  
-    # 1111111111111111111111
-    ai = {"role": "ai", "content": "你是一個翻譯大師，將英文翻譯成繁體中文中文。"}
-    messages = [ai, data.get('messages')[-1]]
-    # 1111111111111111111111111
-    return Response(
-        generate_data(controlboard, provider, model, messages, api_key, base_url=base_url), 
-        mimetype='text/event-stream'
+
+    state = GraphState(
+        provider= provider,
+        model= model,
+        api_key= api_key,
+        llm = "",
+        user_input= user_input,
+        categories= [],
+        project_name= controlboard,
+        new_rule= dict(),
+        project_info= dict(),
+        selected_df= dict()
     )
+  
+    try:
+        print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: ")
+        print(state)
+        image_path = "langgraph.png"
+        with open(image_path, 'wb') as file:
+            image_data = workflow.get_graph().draw_mermaid_png()
+            file.write(image_data)
+        # result = workflow.invoke(state)
+        return jsonify({"error": ""}), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 500

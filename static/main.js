@@ -85,6 +85,7 @@ var app = new Vue({
     apiKey: "",
     chatInput: "",
     isChatButtonDisabled: false,
+    needApiKey: false,
   },
   created: function () {
     // Procedures to correctly render data:
@@ -209,6 +210,7 @@ var app = new Vue({
     selectedProvider(provider) {
       this.selectedModel = this.providersData[provider].models[0];
       this.apiKey = this.providersData[provider].api_key;
+      this.needApiKey = this.providersData[provider].need_api_key;
     }
   },
   methods: {
@@ -958,38 +960,25 @@ var app = new Vue({
         this.makeToast('danger', "Error", "Missing required field: message");
         return;
       }
-      this.chatInput = "";
       this.isChatButtonDisabled = true;
-      const response = await fetch("/llm/chat", {
+      const response = await fetch("/llm/cb_agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           controlboard: this.selectedControlBoard ? this.selectedControlBoard.text : null,
           provider: this.selectedProvider,
           api_key: this.apiKey,
-          messages: this.messages,
+          user_input: this.chatInput,
           model: this.selectedModel,
         }),
       });
       if (!response.ok) {
         const error = await response.json();
         this.makeToast('danger', "Error", error.error);
-        this.chatInput = user_prompt.content;
-        this.isChatButtonDisabled = false;
-        return;
+      } else {
+        this.makeToast('success', "Success", "成功完成配置");
       }
-      const reader = response.body.getReader();
-      let output = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        output += new TextDecoder().decode(value);
-        console.log(output);
-
-        if (done) {
-          break;
-        }
-      }
+      this.chatInput = "";
       this.isChatButtonDisabled = false;
     },
     // onUpdateSensorCod({ ruleID, data }) {
