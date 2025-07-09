@@ -212,6 +212,27 @@ def convert_rule_format(rules: list):
 
     return new_rules
 
+def query_ollama(prompt: str, base_url: str, model: str, api_key: str):
+    if base_url.endswith("/"):
+        base_url = base_url[:-1]
+
+    url = base_url + "/api/generate"
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,  # set to True if you want to handle streamed responses
+        "keep_alive": -1
+    }
+
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        data = response.json()
+        return data.get("response")
+    except requests.exceptions.RequestException as e:
+        print(f"Error querying Ollama: {e}")
+        return None
+
 if __name__ == "__main__":
     project_info = get_project_info("***0611")
     response = find_cb_na_id(project_info, 9)

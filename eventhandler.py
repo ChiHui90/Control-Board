@@ -108,13 +108,7 @@ def render_index():
 @orm.db_session
 def render_index_cb(cb_name):
     '''
-    Render Function of main page with specified cb name.
-
-    Args:
-        cb_name: controlboard name
-
-    Returns:
-        Rendered HTML template with CB info (to be picked up by JS).
+   
     '''
     if cb_name == "favicon.ico":
         return "ok", 200
@@ -128,8 +122,16 @@ def render_index_cb(cb_name):
         state, response = get_project_info(cb_name, api_logger)
         if state:
             if len(response["result"]["ido"]) == 0 or len(response["result"]["odo"]) == 0:
-                data["error"] = "Please Fisrt Create Input Device Object or Output Device Object"
+                data["error"] = "Please Create Input Device Object or Output Device Object"
                 return jsonify(data), 200
+            
+            # 判斷是否都 bind device 了
+            # all_device_object = response["result"]["ido"] + response["result"]["odo"]
+            # for do in all_device_object:
+            #     if do["d_name"] is None:
+            #         data["error"] = "Please Bind Device"
+            #         print(jsonify(data))
+            #         return jsonify(data), 200
         else:
             data["error"] = str(response)
             return jsonify(data), 200
@@ -147,7 +149,7 @@ def render_index_cb(cb_name):
     except Exception as err:
         api_logger.exception(err)
         data["error"] = str(err)
-        return jsonify(data), 500
+        return jsonify(data), 200
 
 @apis.route('/cb/gui/<string:cb_name>', methods=["GET"])
 @requires_login
@@ -1409,22 +1411,20 @@ def get_llm():
 def invoke_cb_agent():
     data: dict = request.get_json()
     print("ask llm data: ", data)
+    controlboard = data.get("controlboard")
+    provider = data.get("provider")  
+    model = data.get("model")  
+    user_input = data.get("user_input")
+    api_key = data.get("api_key", "")
+    base_url = env_config[provider].get("base_url", "") 
+
     required_fields = ["controlboard", "provider", "model", "user_input"]
     for field in required_fields:
         if not data.get(field):
             return jsonify({"error": f"Missing required field: {field}"}), 400
-
-    controlboard = data.get("controlboard")
-    provider = data.get("provider")  
-    model = data.get('model')  
-    user_input = data.get('user_input')
-    api_key = data.get('api_key')
-
-    base_url = None
-    if env_config[provider].get("host"):
-        base_url = env_config[provider].get("host") 
-        if env_config[provider].get("port"):
-            base_url += ":" + env_config[provider].get("port")
+    
+    if env_config[provider]["need_api_key"] == "True" and not data.get("api_key"):
+        return jsonify({"error": f"Missing required field: api key"}), 400
 
     state = GraphState(
         provider= provider,
@@ -1436,17 +1436,17 @@ def invoke_cb_agent():
         project_name= controlboard,
         new_rule= dict(),
         project_info= dict(),
-        selected_df= dict()
+        selected_df= dict(),
+        base_url= base_url
     )
   
     try:
-        print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa: ")
-        print(state)
-        image_path = "langgraph.png"
-        with open(image_path, 'wb') as file:
-            image_data = workflow.get_graph().draw_mermaid_png()
-            file.write(image_data)
-        # result = workflow.invoke(state)
+        result = workflow.invoke(state)
+
+        if "other" in result["categories"]:
+            return jsonify({"error": "很抱歉，我們無法理解您的請求。"}), 500
+        
         return jsonify({"error": ""}), 200
     except Exception as err:
+        print(err)
         return jsonify({"error": str(err)}), 500

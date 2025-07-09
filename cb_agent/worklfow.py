@@ -1,9 +1,10 @@
-from langgraph.graph import StateGraph, START, END
+from langgraph.graph import StateGraph, START, END  
+from langgraph.graph.state import CompiledStateGraph
 
 from .model import GraphState
 from .nodes import *
 
-def build_workflow():
+def build_workflow() -> CompiledStateGraph :
     workflow = StateGraph(GraphState)
     workflow.add_node("select_llm", select_llm)
     workflow.add_node("cb_classify_features", cb_classify_features)

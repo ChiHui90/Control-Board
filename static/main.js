@@ -81,11 +81,11 @@ var app = new Vue({
     providersData: null,
     selectedControlBoard: null,
     selectedProvider: "ollama",
-    selectedModel: "llama3.1:8b", 
+    selectedModel: "llama3.3", 
     apiKey: "",
     chatInput: "",
     isChatButtonDisabled: false,
-    needApiKey: false,
+    needApiKey: true,
   },
   created: function () {
     // Procedures to correctly render data:
@@ -158,6 +158,7 @@ var app = new Vue({
     return;
   },
   mounted: function() {
+    console.log("mmmmmmooooooouuutttttteeed main.js 161: ", window.is_go_llm);
     if (typeof default_cb !== "undefined" && default_cb) {
       this.showLoading = true;
       var req = "all";
@@ -166,15 +167,13 @@ var app = new Vue({
           var cbList = res;
           var cb = cbList.find(cb => cb.text === default_cb);
           if (cb) {
-              // window.localStorage.setItem("cb", JSON.stringify(found));
-              // window.localStorage.setItem("privilege", privilege);
-              // window.location = "/";
               this.onRefreshCB(cb)
                 .then((res) => {
                   this.refreshCBWorker(cb);
                   cb.status = true;
                   window.localStorage.setItem("cb", JSON.stringify(cb));
                   window.localStorage.setItem("privilege", this.privilege);
+                  window.localStorage.setItem("isGoLLM", true);
                   console.log("goooooooooooooooooooooood: ");
                   window.location.href = "/";
                   this.showLoading = false;
@@ -188,8 +187,14 @@ var app = new Vue({
             this.showLoading = false;
             window.location.href = "/"
           }
-                })
+        })
         return;
+    }
+    isGoLLM = window.localStorage.getItem("isGoLLM") === 'true';
+    console.log("gogogogogogo main.js 192:", isGoLLM);
+    if (isGoLLM) {
+      this.currentPage = 2;
+      window.localStorage.removeItem("isGoLLM");
     }
   },
   computed: {
@@ -230,7 +235,7 @@ var app = new Vue({
         title: title,
         variant: variant,
         solid: true,
-        autoHideDelay: 3000,
+        autoHideDelay: 5000,
       });
     },
     getAvailableCBs: function (account) {
