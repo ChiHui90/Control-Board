@@ -62,7 +62,6 @@
             v-on:click="onSAConfirm"><b>Save</b></b-nav-item>
           <b-nav-item class="system-button custom-nav-item" v-if="currentPage === 1"
             v-on:click="onSAReset"><b>Reset</b></b-nav-item>
-          <b-nav-item class="system-button custom-nav-item" v-on:click="goLLMGUI"><b>AI</b></b-nav-item>
           <b-nav-item class="system-button custom-nav-item" v-on:click="onLogout"><b>Logout</b></b-nav-item>
         </b-navbar-nav>
       </div>
@@ -96,9 +95,13 @@
           </b-nav-item-dropdown>
 
           <!-- Admin Page Card Title -->
-          <b-nav-item v-if="currentPage === 0" v-bind:active="manageTab" v-on:click="onSwitchManageTab">
+          <!-- 
+              !!!!!!!!!!!!!!!   注意  !!!!!!!!!!!!
+              fuck 林博無理的要求不顯示管理介面，如果需要管理介面，取消註解
+            -->
+          <!-- <b-nav-item v-if="currentPage === 0" v-bind:active="manageTab" v-on:click="onSwitchManageTab">
             User
-          </b-nav-item>
+          </b-nav-item> -->
           <b-nav-item v-if="currentPage === 0" v-bind:active="!manageTab" v-on:click="onSwitchManageTab">
             ControlBoard
           </b-nav-item>
@@ -242,6 +245,8 @@
         </div>
 
         <!-- Admin Page -->
+
+
         <div v-if="currentPage === 0 && privilege">
           <b-row class="text-left">
             <!-- User Tab -->
@@ -325,8 +330,9 @@
             <b-col>
               <b-link v-b-modal="'deleteCB'+index" size="sm" variant="outline-primary" class="mr-3">Delete</b-link>
               <b-link class="mr-3" v-on:click=goCBGUI(cb)>GUI</b-link>
-              <b-link v-on:click="onCBConfig(cb)" size="sm"
+              <b-link v-on:click="onCBConfig(cb)" size="sm" class="mr-3"
                 v-bind:variant="cb.status?'outline-primary' : 'secondary'">Configuration</b-link>
+              <b-link class="mr-3" v-on:click=goLLMGUI(cb)>Assistant</b-link>
               <b-modal v-bind:id="'deleteCB'+index" title="Delete ControlBoard" hide-backdrop content-class="shadow"
                 hide-footer body-class="hide-body" v-on:ok="onCBDelete(cb.value, 1)"
                 v-on:cancel="onCBDelete(cb.value, 0)" v-on:close="onCBDelete(cb.value, 0)">
@@ -353,10 +359,7 @@
       <div class="row">
         <div class="col-4">
           <div class="form-item">
-            <label class="form-label">ControlBoard</label>
-            <el-select v-model="selectedControlBoard" placeholder="Select" class="form-select">
-              <el-option v-for="cb in controlboards" :key="cb.value" :label="cb.text" :value="cb" />
-            </el-select>
+            <label class="form-label">ControlBoard: <% selectedControlBoard %></label>
           </div>
         </div>
         <div class="col-4">

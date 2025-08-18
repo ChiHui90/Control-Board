@@ -267,3 +267,7 @@ body {
 .form-label {
   margin-top: 10px;
 }
+
+.mr-3 {
+  margin: 0 5px 0 5px;
+}

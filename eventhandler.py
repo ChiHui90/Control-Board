@@ -126,12 +126,12 @@ def render_index_cb(cb_name):
                 return jsonify(data), 200
             
             # 判斷是否都 bind device 了
-            # all_device_object = response["result"]["ido"] + response["result"]["odo"]
-            # for do in all_device_object:
-            #     if do["d_name"] is None:
-            #         data["error"] = "Please Bind Device"
-            #         print(jsonify(data))
-            #         return jsonify(data), 200
+            all_device_object = response["result"]["ido"] + response["result"]["odo"]
+            for do in all_device_object:
+                if do["d_name"] is None:
+                    data["error"] = "Please Bind Device"
+                    print(jsonify(data))
+                    return jsonify(data), 200
         else:
             data["error"] = str(response)
             return jsonify(data), 200

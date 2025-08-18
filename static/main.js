@@ -465,8 +465,12 @@ var app = new Vue({
           this.showLoading = false;
         })
     },
-    goLLMGUI: function () {
+    goLLMGUI: function (cb) {
       this.currentPage = 2;
+      this.selectedControlBoard = cb.text
+      console.log("11111111111111111111111111111");
+      console.log(cb.text);
+      
     },
     onSwitchManageTab: function () {
       this.manageTab = !this.manageTab;
