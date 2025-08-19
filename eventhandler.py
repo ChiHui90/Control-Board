@@ -126,16 +126,15 @@ def render_index_cb(cb_name):
                 return jsonify(data), 200
             
             # 判斷是否都 bind device 了
-            all_device_object = response["result"]["ido"] + response["result"]["odo"]
-            for do in all_device_object:
-                if do["d_name"] is None:
-                    data["error"] = "Please Bind Device"
-                    print(jsonify(data))
-                    return jsonify(data), 200
+            # all_device_object = response["result"]["ido"] + response["result"]["odo"]
+            # for do in all_device_object:
+            #     if do["d_name"] is None:
+            #         data["error"] = "Please Bind Device"
+            #         print(jsonify(data))
+            #         return jsonify(data), 200
         else:
             data["error"] = str(response)
             return jsonify(data), 200
-        
 
         url = f'http://{env_config["env"]["host"]}:{env_config["env"]["port"]}/cb/create_cb'
         response = requests.post(url, data=cb_name)
@@ -970,12 +969,13 @@ def create_cb():
     new_cb = request.get_data().decode("utf-8")
     mac_addr = str(uuid.uuid4())
 
-    cb = CB.get(cb_name=new_cb)
-    if cb:
-        return f"The same name cannot be used : {new_cb}", 400
-
-    cb = CB(cb_name=new_cb, ag_token="NotCreated", mac_addr=mac_addr,
-            p_id=-1, do_id="-1", status=False, na_id="-1", dedicated=True)
+    cb:CB = CB.get(cb_name=new_cb)
+    if cb is None:
+        cb = CB(cb_name=new_cb, ag_token="NotCreated", mac_addr=mac_addr,
+                p_id=-1, do_id="-1", status=False, na_id="-1", dedicated=True)
+    else:
+        deregister_ag(cb.ag_token, api_logger)
+        cb.ag_token = "NotCreated"
 
     cb_db.commit()
     api_logger.info("Start Creating CB")
@@ -987,7 +987,7 @@ def create_cb():
         if not status:  # Project already exists
             new_project = False
             cb.dedicated = False
-
+        print("nnnnnnnnnnnnneeeeeeeeeeewwwwwwwwwww: ", new_project)
         status, project_info = get_proj_ag(new_cb, api_logger)
         if not status:
             cb.delete()
@@ -1005,6 +1005,8 @@ def create_cb():
                 for do in project_info["odo"]:
                     if do["dm_name"] == "ControlBoard":
                         do_id.append(do["do_id"])
+        if len(do_id) == 1:
+            status, result = delete_do_ag(p_id, do_id[0], api_logger)
         if len(do_id) != 2:
             # Create Device Object
             print("cccccccccccccccccreate device object")
@@ -1450,3 +1452,9 @@ def invoke_cb_agent():
     except Exception as err:
         print(err)
         return jsonify({"error": str(err)}), 500
+
+@apis.errorhandler(Exception)
+def handle_all_exceptions(e):
+    code = 500
+    msg = str(e)
+    return jsonify({"msg": msg}), code
