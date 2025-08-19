@@ -158,7 +158,6 @@ var app = new Vue({
     return;
   },
   mounted: function() {
-    console.log("mmmmmmooooooouuutttttteeed main.js 161: ", window.is_go_llm);
     if (typeof default_cb !== "undefined" && default_cb) {
       this.showLoading = true;
       var req = "all";
@@ -174,7 +173,6 @@ var app = new Vue({
                   window.localStorage.setItem("cb", JSON.stringify(cb));
                   window.localStorage.setItem("privilege", this.privilege);
                   window.localStorage.setItem("isGoLLM", true);
-                  console.log("goooooooooooooooooooooood: ");
                   window.location.href = "/";
                   this.showLoading = false;
                   return
@@ -191,6 +189,7 @@ var app = new Vue({
         return;
     }
     isGoLLM = window.localStorage.getItem("isGoLLM") === 'true';
+
     console.log("gogogogogogo main.js 192:", isGoLLM);
     if (isGoLLM) {
       this.currentPage = 2;
@@ -383,6 +382,9 @@ var app = new Vue({
             console.log("🚀 ~ file: main.js ~ line 285 ~ .then ~ new_rules", new_rules)
           })
           this.settings = new_rules;
+          if (this.settings.length == 0) {
+            this.currentPage = 2;
+          }
           this.refreshStatusWorker();
         })
         .catch((err) => {
@@ -454,6 +456,7 @@ var app = new Vue({
           window.localStorage.setItem("cb", JSON.stringify(cb));
           window.localStorage.setItem("privilege", this.privilege);
           this.showLoading = false;
+          window.localStorage.setItem("settings", this.controlboards);
           window.location.href = "/";
         })
         .catch((err) => {
@@ -467,9 +470,9 @@ var app = new Vue({
     },
     goLLMGUI: function (cb) {
       this.currentPage = 2;
-      this.selectedControlBoard = cb.text
+      this.selectedControlBoard = cb;
       console.log("11111111111111111111111111111");
-      console.log(cb.text);
+      console.log(cb);
       
     },
     onSwitchManageTab: function () {
@@ -734,7 +737,7 @@ var app = new Vue({
     },
     */
     onRefreshCB: function (cb) {
-      return new Promise(function (resolve, reject) {
+      return new Promise((resolve, reject) => {
         console.log(this.currentCB);
         console.log(cb);
         window.clearInterval(this.statusTrackWorker);
@@ -751,7 +754,19 @@ var app = new Vue({
             resolve(res);
           })
           .catch((err) => {
-            debugger
+            if (err.response) {
+              console.log(err.response.status); 
+              this.makeToast('danger', "Error", "Unable to find the project in IotTalk");
+              this.showLoading = false;
+              this.$nextTick(() => {
+                // 確保畫面更新後再跳轉
+                setTimeout(() => {
+                  window.location.href = "/";
+                }, 1500);
+              });
+            } else {
+              console.log("Network Error", err.message);
+            }
             reject(err);
           })
       })
