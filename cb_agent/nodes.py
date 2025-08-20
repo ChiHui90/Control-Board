@@ -151,7 +151,9 @@ def cb_update_rule(state: GraphState):
     chain = prompt | state.llm | JsonOutputParser() 
     new_rule = chain.invoke({"user_input": state.user_input, "rule": rule})
 
-
+    old_rule = rules[selected_idx]
+    new_rule["actuator_alias"] = old_rule["actuator_alias"]
+    new_rule["rule_id"] = old_rule["rule_id"]
     rules[selected_idx] = new_rule
     print("rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr")
     print(rules)

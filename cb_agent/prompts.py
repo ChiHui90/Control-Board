@@ -45,9 +45,9 @@ sensor_config_prompt = '''
 
 ### 主體設定
 
-"rule_id"：規則編號，整數型，不需修改
+"rule_id"：規則編號，整數型，**不能修改**
 
-"actuator_alias"：感測條件所控制的執行器名稱，字串型，不需修改
+"actuator_alias"：感測條件所控制的執行器名稱，字串型，**不可變動欄位，任何情況都不能修改**
 
 "time_open": 開始時間，格式為 [時, 分, 秒]，預設為 [0, 0, 0]
 
@@ -67,9 +67,9 @@ sensor_config_prompt = '''
 
 每一筆 sensor 物件包含以下欄位：
 
-"sensor_alias": 感測器的名稱，字串型，不需修改
+"sensor_alias": 感測器的名稱，字串型，**不能修改**
 
-"sensor_index": 感測器的編號，整數型，不需修改
+"sensor_index": 感測器的編號，整數型，**不能修改**
 
 "threshold_open"：開啟執行器的閾值，數值型，預設為 0.0
 
@@ -81,7 +81,7 @@ sensor_config_prompt = '''
 
 "operation"：與下一個 sensor 的邏輯關係，預設為 "AND"，可選值："AND", "OR"
 
-"is_show_operation"：布林值，不需修改
+"is_show_operation"：布林值，**不能修改**
 
 ---
 
