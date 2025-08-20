@@ -54,6 +54,8 @@ def project_info_fetcher(state: GraphState):
         }
     }
     response = _post("ccm_api", data)
+    if response["state"] == "error":
+        raise ValueError(f"Cannot find project in IoTtalk: {state.project_name}")
     state.project_info = response
     return state
 

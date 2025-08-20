@@ -126,12 +126,12 @@ def render_index_cb(cb_name):
                 return jsonify(data), 200
             
             # 判斷是否都 bind device 了
-            # all_device_object = response["result"]["ido"] + response["result"]["odo"]
-            # for do in all_device_object:
-            #     if do["d_name"] is None:
-            #         data["error"] = "Please Bind Device"
-            #         print(jsonify(data))
-            #         return jsonify(data), 200
+            all_device_object = response["result"]["ido"] + response["result"]["odo"]
+            for do in all_device_object:
+                if do["d_name"] is None:
+                    data["error"] = "Please Bind Device"
+                    print(jsonify(data))
+                    return jsonify(data), 200
         else:
             data["error"] = str(response)
             return jsonify(data), 200
@@ -1446,11 +1446,12 @@ def invoke_cb_agent():
         result = workflow.invoke(state)
 
         if "other" in result["categories"]:
-            return jsonify({"error": "很抱歉，我們無法理解您的請求。"}), 500
+            api_logger.exception(f"error_message: 很抱歉，無法理解您的請求。\nerror_state: {state}")
+            return jsonify({"error": "很抱歉，無法理解您的請求。"}), 500
         
         return jsonify({"error": ""}), 200
     except Exception as err:
-        print(err)
+        api_logger.exception(f"error_message: {err}\nerror_state: {state}")
         return jsonify({"error": str(err)}), 500
 
 @apis.errorhandler(Exception)

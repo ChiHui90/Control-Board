@@ -86,7 +86,7 @@ var app = new Vue({
     chatInput: "",
     isChatButtonDisabled: false,
     needApiKey: true,
-    isGoIotTalk: false,
+    isGoGUI: false,
   },
   created: function () {
     // Procedures to correctly render data:
@@ -113,7 +113,7 @@ var app = new Vue({
       this.currentCB = cb;
       this.selectedControlBoard = cb;
       this.currentPage = 1;
-      this.isGoIotTalk = true;
+      this.isGoGUI = true;
       this.refreshRuleWorker();
 
       window.addEventListener("beforeunload", function () {
@@ -384,9 +384,9 @@ var app = new Vue({
             console.log("🚀 ~ file: main.js ~ line 285 ~ .then ~ new_rules", new_rules)
           })
           this.settings = new_rules;
-          if (this.settings.length == 0 && this.isGoIotTalk) {
+          if (this.settings.length == 0 && this.isGoGUI) {
             this.currentPage = 2;
-            this.isGoIotTalk = false;
+            this.isGoGUI = false;
           }
           this.refreshStatusWorker();
         })
