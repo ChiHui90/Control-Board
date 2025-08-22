@@ -1,0 +1,63 @@
+random number 的值大於0.5，開啟丟球，小於0.5關閉丟球
+['control_logic', 'connect']
+
+用CO2控制Luminance-O，當CO2高於500時關燈，CO2低於450時開燈。
+['control_logic', 'connect']
+
+用Luminance控制 Luminance-O，當亮度高於24關燈，當亮度低於22開燈
+['control_logic', 'connect']
+
+用Luminance控制Luminance-O，當亮度高於24才能關燈，當亮度低於22開燈
+['control_logic', 'connect']
+
+用Luminance控制Luminance-O，當亮度高於24關燈，當亮度低於22開燈
+['control_logic', 'connect']
+
+用 Luminance 控制 Luminance-O，當亮度大於24才能關燈，低於22開燈。
+['control_logic', 'connect']
+
+用Luminance控制 Luminance-O，當亮度高於24關燈，當亮度低於22開燈
+['control_logic', 'connect']
+
+由Luminance控制Luminance-O，當亮度大於24開燈，小於22關燈
+['control_logic', 'connect']
+
+用Luminance控制Luminance-O，當亮度大於24開燈，亮度小於22關燈
+['control_logic', 'connect']
+
+Use Luminance to control Luminance-O, when Luminance is above 24, then on 
+['control_logic', 'connect']
+
+以Luminance控制Luminance-O，當亮度大於24開燈
+['control_logic', 'connect']
+
+當Luminase-O>24時關燈，當Luminase-O<22時開燈
+['control_logic', 'connect']
+
+當knob的值大於0.5時，開啟電燈，否則關閉電燈
+['control_logic', 'connect']
+
+如果co2大於30，開啟電風
+['control_logic', 'connect']
+
+co2大於30，關閉電燈
+['control_logic', 'connect']
+
+co2大於10關閉電風
+['control_logic', 'connect']
+
+當co2大於20時，開啟電風
+['control_logic', 'connect']
+
+當co2大於20時，開啟電風
+['control_logic', 'connect']
+
+當co2大於20時，開啟電風
+['control_logic', 'connect']
+
+當co2大於20時，開啟電風
+['control_logic', 'connect']
+
+aaaaaaaaaaaa
+['other']
+

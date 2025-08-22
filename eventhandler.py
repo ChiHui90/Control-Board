@@ -39,6 +39,7 @@ from models import CBElement, CB_Account, CB, CB_Sensor
 from enums import SensorDataEnum, ActuatorDataEnum
 from cb_agent.worklfow import build_workflow
 from cb_agent.model import GraphState
+from cb_agent.exceptions import AgentError
 
 
 api_logger = make_logger('API', 'API')
@@ -128,7 +129,9 @@ def render_index_cb(cb_name):
             # 判斷是否都 bind device 了
             all_device_object = response["result"]["ido"] + response["result"]["odo"]
             for do in all_device_object:
-                if do["d_name"] is None:
+                print("iiiiiiiiiiiiiiiiiiiiiiiiii")
+                print(do)
+                if do["d_name"] is None and do["dm_name"] != "ControlBoard":
                     data["error"] = "Please Bind Device"
                     print(jsonify(data))
                     return jsonify(data), 200
@@ -1005,8 +1008,12 @@ def create_cb():
                 for do in project_info["odo"]:
                     if do["dm_name"] == "ControlBoard":
                         do_id.append(do["do_id"])
+        print("ggggggggggggggggggggggggggggggggggggggggggg")
+        print(project_info)
         if len(do_id) == 1:
             status, result = delete_do_ag(p_id, do_id[0], api_logger)
+            for na in project_info["na"]:
+                status, result = delete_na_ag(na["na_id"], p_id, api_logger)
         if len(do_id) != 2:
             # Create Device Object
             print("cccccccccccccccccreate device object")
@@ -1439,19 +1446,17 @@ def invoke_cb_agent():
         new_rule= dict(),
         project_info= dict(),
         selected_df= dict(),
-        base_url= base_url
+        base_url= base_url,
     )
   
     try:
         result = workflow.invoke(state)
-
-        if "other" in result["categories"]:
-            api_logger.exception(f"error_message: 很抱歉，無法理解您的請求。\nerror_state: {state}")
-            return jsonify({"error": "很抱歉，無法理解您的請求。"}), 500
-        
         return jsonify({"error": ""}), 200
+    except AgentError as err:
+        api_logger.exception(err.error_status)
+        return jsonify({"error": str(err)}), 500
     except Exception as err:
-        api_logger.exception(f"error_message: {err}\nerror_state: {state}")
+        api_logger.exception(str(err))
         return jsonify({"error": str(err)}), 500
 
 @apis.errorhandler(Exception)

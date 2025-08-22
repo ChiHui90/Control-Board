@@ -10,7 +10,7 @@ from .utils import get_unused_cb_dfo, get_cb_object_id, create_na
 from .utils import _post, convert_rule_format, get_user_device
 from .prompts import cb_classify_features_prompt, sensor_config_prompt, select_devices_prompt
 from .model import GraphState, CustomOllama
-
+from .exceptions import AgentError
 
 class PythonListOutputParser(BaseOutputParser):
     def parse(self, text: str):
@@ -36,14 +36,19 @@ def cb_classify_features(state: GraphState):
     chain = prompt | state.llm | PythonListOutputParser() 
     state.categories = chain.invoke({"user_input": state.user_input})
     print("使用者輸入分類: ", state.categories)
+    with open("./data/categories.txt", "a", encoding="utf-8") as f:
+        f.write(str(state.user_input) + "\n")
+        f.write(str(state.categories) + "\n\n")
     return state
 
 def extract_categories(state: GraphState):
     print("workflow: extract_categories")
+    
     if "connect" in state.categories:
         return "connect"
     else:
-        return "other"
+        error_status = f"\n!!!!!!!{str({"user_input": state.user_input, "category": state.categories})}\n!!!!!!!"
+        raise AgentError("很抱歉，無法理解您的請求。", error_status)
 
 def project_info_fetcher(state: GraphState):
     print("workflow: project_info_fetcher")
@@ -55,7 +60,7 @@ def project_info_fetcher(state: GraphState):
     }
     response = _post("ccm_api", data)
     if response["state"] == "error":
-        raise ValueError(f"Cannot find project in IoTtalk: {state.project_name}")
+        raise AgentError(f"Cannot find project in IoTtalk: {state.project_name}")
     state.project_info = response
     return state
 
@@ -72,13 +77,17 @@ def device_selector(state: GraphState):
     chain = prompt | state.llm | JsonOutputParser() 
     state.selected_df = chain.invoke({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input})
        
-    print("ssssssssssssssssssssssssssssss")
-    p = prompt.invoke({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input})
-    print(p)
-    print("ssssssssssssssssssssssssssssss")
-    print(state.selected_df)
+    print("ddddd" * 10)
+    pp = prompt.invoke({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input})
+    print(pp)
+    with open("./data/device_selector.txt", "a", encoding="utf-8") as f:
+        f.write(str(pp) + "\n")
+        f.write(str(state.selected_df) + "\n\n")
+    print("ddddd" * 10)
+    
     if len(state.selected_df["input"]) == 0 or len(state.selected_df["output"]) == 0:
-        raise ValueError("沒有適合的 input device 或 output device")
+        error_status = f'!!!!!!!!!!!!!\n{str({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input, "llm_respone": state.selected_df})}\n!!!!!!!!!!!!!!!!'
+        raise AgentError("沒有適合的 input device 或 output device", error_status)
     
     return state
 
@@ -115,7 +124,7 @@ def cb_update_rule(state: GraphState):
     response = requests.get(url + f"cb/refresh_cb/{cb_id}")
     print("Success: refresh cb" if response.status_code == 200 else "Fail: refresh cb")
     if response != 200:
-        ValueError("Failed to refresh CB.")
+        AgentError("Failed to refresh CB.")
 
     response = requests.get(url + f"cb/{cb_id}/rules")
     rules = response.json()
@@ -136,7 +145,7 @@ def cb_update_rule(state: GraphState):
 
     print("selected_rule_idx: ", selected_idx)
     if selected_idx is None:
-        raise ValueError("Can not find rule")
+        raise AgentError("Can not find rule")
     
     rule = str(rules[selected_idx]).replace("'", "\"")
 
@@ -150,6 +159,9 @@ def cb_update_rule(state: GraphState):
     print("ppppppppppppppppppppppppppppppppp")
     chain = prompt | state.llm | JsonOutputParser() 
     new_rule = chain.invoke({"user_input": state.user_input, "rule": rule})
+    with open("./data/user_prompt.txt", "a", encoding="utf-8") as f:
+        f.write(str(c) + "\n")
+        f.write(str(new_rule) + "\n\n")
 
     old_rule = rules[selected_idx]
     new_rule["actuator_alias"] = old_rule["actuator_alias"]
@@ -160,6 +172,8 @@ def cb_update_rule(state: GraphState):
     print("rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr")
     response = requests.post(url + f"cb/{cb_id}/new_rules", json=rules)
     if response.status_code != 200:
-        raise ValueError("Failed to set new rule.")
+        error_status = f'\n!!!!!!!!!!!!!\n{str({"rule": rule, "user_input": state.user_input, "llm_respone": new_rule})}\n!!!!!!!!!!!!!!!!'
+        raise AgentError(f'Failed to set new rule', error_status)
+
     print("Success: set new rules" if response.status_code == 200 else "Fail: set new rules")
 
