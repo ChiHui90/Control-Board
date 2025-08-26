@@ -87,6 +87,7 @@ var app = new Vue({
     isChatButtonDisabled: false,
     needApiKey: true,
     isGoGUI: false,
+    isGUIButton: false,
   },
   created: function () {
     // Procedures to correctly render data:
@@ -387,7 +388,7 @@ var app = new Vue({
           if (this.settings.length == 0 && this.isGoGUI) {
             this.currentPage = 2;
             this.isGoGUI = false;
-          }
+          } 
           this.refreshStatusWorker();
         })
         .catch((err) => {
@@ -452,6 +453,9 @@ var app = new Vue({
     goCBGUI: function (cb) {
       this.showLoading = true;
       console.log("test");
+      console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+      console.log(cb)
+      console.log("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
       this.onRefreshCB(cb)
         .then((res) => {
           this.refreshCBWorker(cb);
@@ -474,8 +478,20 @@ var app = new Vue({
     goLLMGUI: function (cb) {
       this.currentPage = 2;
       this.selectedControlBoard = cb;
-      console.log("11111111111111111111111111111");
-      console.log(cb);
+      console.log("uuuuuuuuuuuuuuuuuuuuuuuuuuuuu")
+      console.log(cb)
+
+      fetch(`/project/infos/${cb.text}`, { method: "GET" })
+        .then(response => response.json())
+        .then(result => {
+          if (result.result.na.length >= 11) {
+            this.isGUIButton = true;
+          }
+
+        })
+        .catch(error => {
+          console.error("Error:", error)
+        })
       
     },
     onSwitchManageTab: function () {
@@ -1004,6 +1020,7 @@ var app = new Vue({
         this.makeToast('danger', "Error", error.error);
       } else {
         this.makeToast('success', "Success", "成功完成配置");
+        this.isGUIButton = true;
       }
       this.chatInput = "";
       this.isChatButtonDisabled = false;

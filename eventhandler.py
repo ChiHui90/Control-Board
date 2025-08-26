@@ -189,6 +189,15 @@ def open_cb_gui(cb_name):
 def get_infos():
     return f'https://{env_config["IoTtalk"]["ServerCCMIP"]}/connection#', 200
 
+@apis.route("/project/infos/<string:p_id>", methods=["GET"])
+@requires_login
+def project_infos(p_id):
+    state, data = get_project_info(p_id, api_logger)
+    if state:
+        return data, 200
+    else:
+        return "", 400
+
 
 @apis.route('/cb/<int:cb_id>/new_rules', methods=['POST'])
 @requires_login

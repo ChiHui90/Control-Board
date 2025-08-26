@@ -398,11 +398,17 @@
       <div id="inputArea">
         <textarea class="form-control" rows="1" id="chatInput" v-model="chatInput"
           placeholder="Example : When the temperature is above 25°C, turn on the fan." ref="chatTextarea"></textarea>
-        <el-button type="primary" @click="submitChat" id="submitButton" :disabled="isChatButtonDisabled" round>
-          Start
-        </el-button>
+        <div id="button-team">
+          <el-button type="info" @click="goCBGUI(selectedControlBoard)" class="submitButton" v-if="isGUIButton" round>
+            GUI
+          </el-button>
+          <el-button type="primary" @click="submitChat" class="submitButton" :disabled="isChatButtonDisabled" round>
+            Start
+          </el-button>
+        </div>
       </div>
     </div>
+  </div>
 
   </div>
   <script type="text/javascript" src="/static/components.js?v=14"></script>

@@ -247,7 +247,7 @@ body {
   min-height: 100px;
 }
 
-#submitButton {
+.submitButton {
   width: 150px;
   height: 50px;
   font-size: 25px;
@@ -270,4 +270,9 @@ body {
 
 .mr-3 {
   margin: 0 5px 0 5px;
+}
+
+#button-team {
+  display: flex;
+  justify-content: end;
 }

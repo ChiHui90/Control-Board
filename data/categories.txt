@@ -61,3 +61,9 @@ co2大於10關閉電風
 aaaaaaaaaaaa
 ['other']
 
+knob value > 0.5 open bulb, value < 0.5 close bulb
+['control_logic', 'connect']
+
+knob value > 0.5 bulb close, knob value < 0.5 bulb open
+['control_logic', 'connect']
+
