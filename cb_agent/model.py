@@ -25,6 +25,7 @@ class GraphState(BaseModel):
     project_info: dict
     selected_df: dict
     base_url: str
+    file_name: str
 
 class CustomOllama(BaseLLM, BaseModel):
     model: str

@@ -8,7 +8,7 @@ import requests
 
 from .utils import get_unused_cb_dfo, get_cb_object_id, create_na
 from .utils import _post, convert_rule_format, get_user_device
-from .prompts import cb_classify_features_prompt, sensor_config_prompt, select_devices_prompt
+from .english_prompts import cb_classify_features_prompt, sensor_config_prompt, select_devices_prompt
 from .model import GraphState, CustomOllama
 from .exceptions import AgentError
 
@@ -36,7 +36,7 @@ def cb_classify_features(state: GraphState):
     chain = prompt | state.llm | PythonListOutputParser() 
     state.categories = chain.invoke({"user_input": state.user_input})
     print("使用者輸入分類: ", state.categories)
-    with open("./data/categories.txt", "a", encoding="utf-8") as f:
+    with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
         f.write(str(state.user_input) + "\n")
         f.write(str(state.categories) + "\n\n")
     return state
@@ -76,19 +76,29 @@ def device_selector(state: GraphState):
     )
     chain = prompt | state.llm | JsonOutputParser() 
     state.selected_df = chain.invoke({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input})
-       
-    print("ddddd" * 10)
+
+    filter_input = []
+    for selected_df in state.selected_df["input"]:
+        for ido in user_device["input"]:
+            if selected_df["dfo_id"] == ido["dfo_id"] and selected_df["alias_name"] == ido["alias_name"]:
+                filter_input.append(selected_df)
+    state.selected_df["input"] = filter_input
+
+    filter_output = []
+    for selected_df in state.selected_df["output"]:
+        for odo in user_device["output"]:
+            if selected_df["dfo_id"] == odo["dfo_id"] and selected_df["alias_name"] == odo["alias_name"]:
+                filter_output.append(selected_df)
+    state.selected_df["output"] = filter_output
+
     pp = prompt.invoke({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input})
-    print(pp)
-    with open("./data/device_selector.txt", "a", encoding="utf-8") as f:
+    with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
         f.write(str(pp) + "\n")
         f.write(str(state.selected_df) + "\n\n")
-    print("ddddd" * 10)
     
     if len(state.selected_df["input"]) == 0 or len(state.selected_df["output"]) == 0:
         error_status = f'!!!!!!!!!!!!!\n{str({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input, "llm_respone": state.selected_df})}\n!!!!!!!!!!!!!!!!'
         raise AgentError("沒有適合的 input device 或 output device", error_status)
-    
     return state
 
 def cb_network(state: GraphState):
@@ -153,13 +163,12 @@ def cb_update_rule(state: GraphState):
         template=sensor_config_prompt,
         input_variables=["user_input", "rule"]
     )
-    print("pppppppppppppppppppppppppppppppppppppp")
+
     c = prompt.invoke({"user_input": state.user_input, "rule": rule})
-    print(c)
-    print("ppppppppppppppppppppppppppppppppp")
+
     chain = prompt | state.llm | JsonOutputParser() 
     new_rule = chain.invoke({"user_input": state.user_input, "rule": rule})
-    with open("./data/user_prompt.txt", "a", encoding="utf-8") as f:
+    with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
         f.write(str(c) + "\n")
         f.write(str(new_rule) + "\n\n")
 
@@ -167,13 +176,12 @@ def cb_update_rule(state: GraphState):
     new_rule["actuator_alias"] = old_rule["actuator_alias"]
     new_rule["rule_id"] = old_rule["rule_id"]
     rules[selected_idx] = new_rule
-    print("rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr")
-    print(rules)
-    print("rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr")
+  
     response = requests.post(url + f"cb/{cb_id}/new_rules", json=rules)
     if response.status_code != 200:
         error_status = f'\n!!!!!!!!!!!!!\n{str({"rule": rule, "user_input": state.user_input, "llm_respone": new_rule})}\n!!!!!!!!!!!!!!!!'
         raise AgentError(f'Failed to set new rule', error_status)
 
     print("Success: set new rules" if response.status_code == 200 else "Fail: set new rules")
+    print("File name:", state.file_name)
 

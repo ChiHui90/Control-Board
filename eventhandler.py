@@ -1456,6 +1456,7 @@ def invoke_cb_agent():
         project_info= dict(),
         selected_df= dict(),
         base_url= base_url,
+        file_name= uuid.uuid4().hex[:8] + ".json",
     )
   
     try:
