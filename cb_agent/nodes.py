@@ -142,6 +142,7 @@ def cb_update_rule(state: GraphState):
     
     selected_df = state.selected_df
 
+    selected_idx = None
     for idx, old_rule in enumerate(rules):
         if old_rule["actuator_alias"] != selected_df["output"][0]["alias_name"].replace("-O", ""):
             continue
