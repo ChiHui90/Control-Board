@@ -163,7 +163,11 @@ var app = new Vue({
   mounted: function() {
     if (typeof default_cb !== "undefined" && default_cb) {
       this.showLoading = true;
-      var req = "all";
+      if (this.privilege) {
+        var req = "all";
+      } else {
+        var req = "self";
+      }
       this.getAvailableCBs(req)
         .then((res) => {
           var cbList = res;
@@ -315,7 +319,11 @@ var app = new Vue({
     },
     /* Refresh routine procedures, including CB, SA, Rule, Status */
     refreshCBWorker: function (next_currentCB) {
-      var req = "all";
+      if (this.privilege) {
+        var req = "all";
+      } else {
+        var req = "self";
+      }
       this.getAvailableCBs(req)
         .then((controlboards) => {
           this.controlboards = controlboards;

@@ -72,8 +72,7 @@
       <b-card-header header-tag="nav">
         <b-nav card-header tabs>
           <span v-if="currentPage === 1 && controlboards.length === 0" style="font-weight: bolder;">
-            <span v-if="privilege">Please create a ControlBoard</span>
-            <span v-else>Contact Us for ControlBoard Deployment!</span>
+            <span>Please create a ControlBoard</span>
           </span>
           <b-nav-item v-for="(cb, index) in controlboards"
             v-if="currentPage === 1 && index < maxPinnedCBs && currentCB.value > 0"
@@ -95,13 +94,9 @@
           </b-nav-item-dropdown>
 
           <!-- Admin Page Card Title -->
-          <!-- 
-              !!!!!!!!!!!!!!!   注意  !!!!!!!!!!!!
-              fuck 林博無理的要求不顯示管理介面，如果需要管理介面，取消註解
-            -->
-          <!-- <b-nav-item v-if="currentPage === 0" v-bind:active="manageTab" v-on:click="onSwitchManageTab">
+          <b-nav-item v-if="currentPage === 0 && privilege" v-bind:active="manageTab" v-on:click="onSwitchManageTab">
             User
-          </b-nav-item> -->
+          </b-nav-item>
           <b-nav-item v-if="currentPage === 0" v-bind:active="!manageTab" v-on:click="onSwitchManageTab">
             ControlBoard
           </b-nav-item>
@@ -135,11 +130,11 @@
             <div class="mb-2">
               <span><b>Trigger</b></span>
               <!-- <span class="float-right">
-                    <b-button-group v-if="setting.dirty">
-                      <b-button size="sm" variant="secondary" plain v-on:click="onSettingUndoChange(index)">Undo</b-button>
-                      <b-button size="sm" variant="primary" plain v-on:click="onSettingSaveChange([index])">Save</b-button>
-                    </b-button-group>
-                  </span> -->
+                <b-button-group v-if="setting.dirty">
+                  <b-button size="sm" variant="secondary" plain v-on:click="onSettingUndoChange(index)">Undo</b-button>
+                  <b-button size="sm" variant="primary" plain v-on:click="onSettingSaveChange([index])">Save</b-button>
+                </b-button-group>
+              </span> -->
             </div>
 
             <!-- test for and / or switch -->
@@ -247,7 +242,7 @@
         <!-- Admin Page -->
 
 
-        <div v-if="currentPage === 0 && privilege">
+        <div v-if="currentPage === 0">
           <b-row class="text-left">
             <!-- User Tab -->
             <b-col v-if="manageTab"><b>User</b></b-col>

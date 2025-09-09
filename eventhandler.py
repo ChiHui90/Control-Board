@@ -54,12 +54,6 @@ def requires_login(f):
     @wraps(f)
     @orm.db_session
     def decorated_function(*args, **kwargs):
-        '''
-            先不用登入
-        '''
-        session["token"] = "f3tf3hmw0lnO0LZN5IuwUF7wtQ5XsxcoloPugwKkbuRLn~cK27cbF7BWL32O7GHTNVwemZgN8JAb5El11lDRP_ik7qooBRT8FfIWSRUyTSt_VD7g3bXveOP5L/6_BxtAQg+h+zMkUub40PDEDTeveCBjQHy8C8iK "
-        session["user"] = "bob900123@gmail.com"
-
         if session.get("token"):
             return f(*args, **kwargs)
         else:
@@ -81,18 +75,12 @@ def render_index():
         Status code: 200 / 500.
     '''
     try:
-        '''
-            先不要有登入
-        '''
-        # if not session.get("token"):
-        #     redirect_url = url_for("api.oauth2_callback", _external=True)
-        #     print("url: ", redirect_url)
-        #     print("redirect to oauth login page")
-        #     ask_login = {"prompt": "login"}
-        #     return oauth2_client.iottalk.authorize_redirect(redirect_url, **ask_login)
-
-        session["token"] = "f3tf3hmw0lnO0LZN5IuwUF7wtQ5XsxcoloPugwKkbuRLn~cK27cbF7BWL32O7GHTNVwemZgN8JAb5El11lDRP_ik7qooBRT8FfIWSRUyTSt_VD7g3bXveOP5L/6_BxtAQg+h+zMkUub40PDEDTeveCBjQHy8C8iK "
-        session["user"] = "bob900123@gmail.com"
+        if not session.get("token"):
+            redirect_url = url_for("api.oauth2_callback", _external=True)
+            print("url: ", redirect_url)
+            print("redirect to oauth login page")
+            ask_login = {"prompt": "login"}
+            return oauth2_client.iottalk.authorize_redirect(redirect_url, **ask_login)
 
         user = CB_Account.get(account=session["user"])
         if None is user:
@@ -127,14 +115,14 @@ def render_index_cb(cb_name):
                 return jsonify(data), 200
             
             # 判斷是否都 bind device 了
-            all_device_object = response["result"]["ido"] + response["result"]["odo"]
-            for do in all_device_object:
-                print("iiiiiiiiiiiiiiiiiiiiiiiiii")
-                print(do)
-                if do["d_name"] is None and do["dm_name"] != "ControlBoard":
-                    data["error"] = "Please Bind Device"
-                    print(jsonify(data))
-                    return jsonify(data), 200
+            # all_device_object = response["result"]["ido"] + response["result"]["odo"]
+            # for do in all_device_object:
+            #     print("iiiiiiiiiiiiiiiiiiiiiiiiii")
+            #     print(do)
+            #     if do["d_name"] is None and do["dm_name"] != "ControlBoard":
+            #         data["error"] = "Please Bind Device"
+            #         print(jsonify(data))
+            #         return jsonify(data), 200
         else:
             data["error"] = str(response)
             return jsonify(data), 200
@@ -154,7 +142,6 @@ def render_index_cb(cb_name):
         return jsonify(data), 200
 
 @apis.route('/cb/gui/<string:cb_name>', methods=["GET"])
-@requires_login
 @orm.db_session
 def open_cb_gui(cb_name):
     '''
@@ -167,15 +154,21 @@ def open_cb_gui(cb_name):
         Rendered HTML template with CB info (to be picked up by JS).
     '''
     try:
-        user = CB_Account.get(account=session["user"])
-        if None is user:
+        if not session.get("token"):
+            redirect_url = url_for("api.oauth2_callback", _external=True)
+            ask_login = {"prompt": "login"}
+            session["cb_name"] = cb_name
+            return oauth2_client.iottalk.authorize_redirect(redirect_url, **ask_login)
+
+        account = CB_Account.get(account=session["user"])
+        if account is None:
             raise NotFoundError
         
         cb = CB.get(cb_name=cb_name)
         if not cb:
             return "<h1>沒有此項目</h1>"
         else:
-            return render_template("main.html", userLevel=user.privilege, default_cb=cb_name), 200
+            return render_template("main.html", userLevel=account.privilege, default_cb=cb_name), 200
     except NotFoundError:
         api_logger.exception("Account recorded in session does not exist")
         abort(500)
@@ -965,7 +958,6 @@ def disable_cb(cb_id):
 
 
 @apis.route('/cb/create_cb', methods=['POST'])
-@requires_login
 @orm.db_session
 def create_cb():
     '''
@@ -1000,6 +992,7 @@ def create_cb():
             new_project = False
             cb.dedicated = False
         print("nnnnnnnnnnnnneeeeeeeeeeewwwwwwwwwww: ", new_project)
+        time.sleep(0.5)  # Uncomment this if the IoTtalk Server cannot create Project in time.
         status, project_info = get_proj_ag(new_cb, api_logger)
         if not status:
             cb.delete()
@@ -1064,10 +1057,11 @@ def create_cb():
             cb.do_id = str(do_id[0]) + ',' + str(do_id[1])
         else:
             cb.do_id = str(do_id)
-        print("oooooooooooooooooooooooooooooooo: ", f"@@@@{cb.do_id}@@@@")
-        account = CB_Account.get(account=session["user"])
-        account.cb_set.add(cb)
-        cb.account_set.add(account)
+        
+        if session.get("user") is not None:
+            account = CB_Account.get(account=session["user"])
+            account.cb_set.add(cb)
+            cb.account_set.add(account)
 
     except NotImplementedError:
         api_logger.exception("IoTtalk V2 is not supported")
@@ -1161,7 +1155,8 @@ def get_cb(usr_account):
             Otherwise `optionProjects` would contains all CBs.
     '''
     try:
-        print(usr_account)
+        print("uuuuuuuuuuuuuuuuuuuuuuuu")
+        print("usr_account", usr_account)
         if "self" == usr_account:  # Access current logined user's accessible CBs.
             usr_account = session["user"]
         current_user = CB_Account.get(account=session["user"])
@@ -1380,7 +1375,18 @@ def oauth2_callback():
         session["user"] = user.account
         user.access_token = token_response["access_token"]
 
-        return redirect(url_for("api.render_index"))
+        cb_name = session.get("cb_name", "")
+        print("cb_name: ", cb_name)
+        if cb_name:
+            cb = CB.get(cb_name=cb_name)
+            if cb is not None:
+                user.cb_set.add(cb)
+                cb.account_set.add(user)
+                cb_db.commit()
+            session.pop("cb_name")
+            return redirect(url_for("api.open_cb_gui", cb_name=cb_name))
+        else:
+            return redirect(url_for("api.render_index"))
     except Exception as err:
         api_logger.exception(err)
         abort(500)
