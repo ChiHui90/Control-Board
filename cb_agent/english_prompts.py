@@ -54,7 +54,7 @@ You need to convert sensor conditions into JSON format according to the followin
 
 "mode": Operation mode, default "Sensor", automatically set to "Timer" only if duty_pos or duty_neg is set
 
-"weekday": Allowed weekdays, array of integers (0 = Monday), default []
+"weekday": Allowed weekdays, array of integers (0 = Monday, 1 = Tuesday, 2 = Wednesday, 3 = Thursday, 4 = Friday, 5 = Saturday, 6 = Sunday), default []
 
 "sensors": Array of sensor condition objects (see below)
 
