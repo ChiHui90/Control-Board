@@ -163,12 +163,81 @@ def open_cb_gui(cb_name):
         account = CB_Account.get(account=session["user"])
         if account is None:
             raise NotFoundError
-        
-        cb = CB.get(cb_name=cb_name)
+
+        cb:CB = CB.get(cb_name=cb_name)
         if not cb:
-            return "<h1>沒有此項目</h1>"
+            return "沒有此項目"
+        
+        status, project_info = get_proj_ag(cb_name, api_logger)
+        if not status:
+            return "沒有此項目", 404
+        
+        for odo in project_info["odo"]:
+            if odo["dm_name"] == "ControlBoard":
+                cb_odfo_ids = [x["dfo_id"] for x in odo["dfo"]]
+                cb_odf_ids = [x["df_id"] for x in odo["dfo"]]
+
+        for ido in project_info["ido"]:
+            if ido["dm_name"] == "ControlBoard":
+                cb_idfo_ids = [x["dfo_id"] for x in ido["dfo"]]
+                cb_idf_ids = [x["df_id"] for x in ido["dfo"]]
+
+        cb_idfo_ids.sort()
+        cb_odfo_ids.sort()
+        cb_idf_ids.sort()
+        cb_odf_ids.sort()
+
+        cb_to_cb_nas = []
+        for na in project_info["na"]:
+            if not (len(na["input"]) == 1 and na["input"][0]["dfo_id"] in cb_idfo_ids):
+                continue
+            if not (len(na["output"]) == 1 and na["output"][0]["dfo_id"] in cb_odfo_ids):
+                continue
+
+            cb_to_cb_nas.append(na["na_id"])
+
+        threads = []
+        for cb_na in cb_to_cb_nas:
+            t = threading.Thread(target=delete_na_ag, args=(cb_na, project_info["p_id"], api_logger))
+            t.start()
+            threads.append(t)
+
+        for t in threads:
+            t.join()
+        
+        df_num = 0
+        for odo in project_info["odo"]:
+            if odo["dm_name"] == "ControlBoard":
+                cb_odo_id = odo["do_id"]
+            else:
+                df_num += len(odo["dfo"])
+
+        for ido in project_info["ido"]:
+            if ido["dm_name"] == "ControlBoard":
+                cb_ido_id = ido["do_id"]
+                break
+
+        new_cb_na_num = min(df_num, 9)
+        for i in range(new_cb_na_num):
+            dfo_pair = [(cb_ido_id, cb_idf_ids[i]), (cb_odo_id, cb_odf_ids[i])]
+            state, res = create_na_ag(project_info["p_id"], dfo_pair, api_logger)
+            if not state:
+                api_logger.exception("Error creating new NA for CBElement, check API logs")
+                return "Error creating new NA for CBElement, check API logs", 500
+            
+        status, project_info = get_proj_ag(cb_name, api_logger)
+        na_ids = list()
+        for na in project_info["na"]:
+            na_ids.append(na["na_id"])
+        nas = ",".join(str(na_id) for na_id in na_ids)
+
+        if nas:
+            cb.na_id = nas
         else:
-            return render_template("main.html", userLevel=account.privilege, default_cb=cb_name), 200
+            cb.na_id = "-1"
+        
+        cb_db.commit()
+        return render_template("main.html", userLevel=account.privilege, default_cb=cb_name), 200
     except NotFoundError:
         api_logger.exception("Account recorded in session does not exist")
         abort(500)
@@ -723,7 +792,10 @@ def refresh_cb(cb_id):
 
         print("nas : ",nas)
         
-        cb.na_id = nas
+        if nas:
+            cb.na_id = nas
+        else:
+            cb.na_id = "-1"
         #src : {1: [[144,'Dummy_Sensor', 'Dummy_Sensor'],[145,'Dummy_Sensor', 'Dummy_Sensor']]} 
         #dst : {1: [['dfo_id','Dummy_Control', 'Dummy_Control']]}
         actuators = list()
@@ -926,7 +998,7 @@ def refresh_cb(cb_id):
     except NotFoundError:
         api_logger.warning("No NAs found, remind user to create NAs")
         cb = CB[cb_id]
-        abort(400, "No NA detected, please create Join point in Project {cb.cb_name}")
+        abort(400, f"No NA detected, please create Join point in Project {cb.cb_name}")
     except CCMAPIFailError:
         api_logger.exception("CCMAPI failed, check which part of the procedure fails")
         abort(500, "Internal Server Error")
@@ -1030,6 +1102,12 @@ def create_cb():
         dfo_ids = list()
         dfo_mapping = dict()  # dfo_id mapping of CBElement-I to CBElement-O
         dfo_df_mapping = dict()  # mapping of dfo_id to df_id
+
+        user_odf_num = 0
+        for odo in project_info["odo"]:
+            if odo["dm_name"] != "ControlBoard":
+                user_odf_num += len(odo["dfo"])
+       
         for ido in project_info["ido"]:
             if ido["dm_name"] == "ControlBoard":
                 cb_idf = ido["dfo"]
@@ -1044,14 +1122,20 @@ def create_cb():
             dfo_ids.append([(cb_ido, idf["df_id"]), (cb_odo, odf["df_id"])])
         start = time.time()
         for i, dfo_pair in enumerate(dfo_ids):
-            state, res = create_na_ag(p_id, f"test{i}", i, dfo_pair, api_logger)
+            if i >= user_odf_num:
+                break
+            state, res = create_na_ag(p_id, dfo_pair, api_logger)
 
         status, project_info = get_proj_ag(new_cb, api_logger)
         na_ids = list()
         for na in project_info["na"]:
             na_ids.append(na["na_id"])
         nas = ",".join(str(na_id) for na_id in na_ids)
-        cb.na_id = nas
+
+        if nas:
+            cb.na_id = nas
+        else:
+            cb.na_id = "-1"
 
         if use_v1:
             cb.do_id = str(do_id[0]) + ',' + str(do_id[1])

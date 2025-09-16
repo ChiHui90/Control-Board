@@ -126,6 +126,9 @@
               ></sensor-row> -->
 
           <!-- Trigger Area -->
+          <div class="setting-area" v-if="setting.mode==='ON' || setting.mode==='OFF'">
+            <h5 style="color: hotpink; padding: 10px 0px;">Manual mode (Sensor and Timer modes disabled)</h5>
+          </div>
           <div class="setting-area" v-if="setting.mode!=='ON' && setting.mode!=='OFF'">
             <div class="mb-2">
               <span><b>Trigger</b></span>
@@ -143,8 +146,6 @@
                     :operation="setting.operation"
                   ></and-or-button>
                 </template> -->
-
-
 
             <!-- Sensor settings -->
             <div v-if="setting.mode==='Sensor'">

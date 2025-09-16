@@ -675,7 +675,7 @@ def bind_device_ag(mac_addr, p_id, do_id, logger):
         return False, "DM not found"
 
 
-def create_na_ag(p_id, na_name, na_idx, dfo_ids, logger):
+def create_na_ag(p_id, dfo_ids, logger):
     '''
     Create a join node with given dfo_ids
 
@@ -697,6 +697,8 @@ def create_na_ag(p_id, na_name, na_idx, dfo_ids, logger):
     }
     try:
         state, res = _post("ccm_api", data, logger)
+        print("1111111111111111111111111")
+        print(res)
         if not state:
             raise CCMAPIFailError
         return state, res["result"]

@@ -783,13 +783,17 @@ var app = new Vue({
           .catch((err) => {
             if (err.response) {
               console.log(err.response.status); 
-              this.makeToast('danger', "Error", "Unable to find the project in IotTalk");
+              console.log("999999999999999999999999999999")
+              console.log(err.response.data)
+              const data = err?.response?.data || {};
+              const errorMsg = data.msg || data.message || 'Unknown error';
+              this.makeToast('danger', 'Error', errorMsg);
               this.showLoading = false;
               this.$nextTick(() => {
                 // 確保畫面更新後再跳轉
                 setTimeout(() => {
                   window.location.href = "/";
-                }, 1500);
+                }, 3000);
               });
             } else {
               console.log("Network Error", err.message);
