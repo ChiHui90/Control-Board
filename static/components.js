@@ -243,3 +243,122 @@ Vue.component('select-projects', {
         </div>
     `
 })
+
+Vue.component('BracketTree', {
+  props: {
+    children: { type: Array, required: true }, 
+    root: { type: String, required: true },    
+    rowGap: { type: Number, default: 40 },     
+    rightGap: { type: Number, default: 40 }    
+  },
+  data() {
+    return {
+      leftMargin: 40,     
+      midX: 100,         
+      rootExtra: 80,    
+      verticalPadding: 0   
+    };
+  },
+  computed: {
+    svgHeight() {
+      
+      if (this.children.length === 1) {
+        return 20; 
+      }
+      return (this.children.length - 1) * this.rowGap + 20;
+    },
+    svgWidth() {
+      return this.leftMargin + this.midX + this.rightGap + this.rootExtra;
+    },
+    midY() {
+      if (this.children.length === 1) {
+        return 10; 
+      }
+      return (this.children.length - 1) * this.rowGap / 2 + 10;
+    }
+  },
+  methods: {
+    childY(i) {
+      return i * this.rowGap + 10; // 10 是文字基线调整
+    },
+    adjustTextMargins() {
+      this.$nextTick(() => {
+        const leftTexts = this.$el.querySelectorAll('text[data-side="left"]');
+        let maxLeft = 0;
+        leftTexts.forEach(t => {
+          const w = t.getBBox().width;
+          if (w > maxLeft) maxLeft = w;
+        });
+        this.leftMargin = maxLeft + 20;
+        const rightText = this.$el.querySelector('text[data-side="right"]');
+        if (rightText) {
+          const w = rightText.getBBox().width;
+          this.rootExtra = w + 20; // 多預留 20px
+        }
+      });
+    }
+  },
+  mounted() {
+    this.adjustTextMargins();
+  },
+  updated() {
+    this.adjustTextMargins();
+  },
+  template: /*html*/`
+  <div class="bracket-tree" style="overflow-x:auto;">
+    <svg :width="svgWidth" :height="svgHeight" style="overflow:visible;">
+      <!-- 子節點水平線 -->
+      <line
+        v-for="(child, i) in children"
+        :key="'h'+i"
+        :x1="leftMargin"
+        :y1="childY(i)"
+        :x2="leftMargin + midX"
+        :y2="childY(i)"
+        stroke="#3b82f6" stroke-width="2"
+      />
+      <!-- 垂直線 -->
+      <line
+        v-if="children.length>1"
+        :x1="leftMargin + midX"
+        :x2="leftMargin + midX"
+        :y1="childY(0)"
+        :y2="childY(children.length-1)"
+        stroke="#3b82f6" stroke-width="2"
+      />
+      <!-- 根節點右側水平線 -->
+      <line
+        :x1="leftMargin + midX"
+        :y1="midY"
+        :x2="leftMargin + midX + rightGap"
+        :y2="midY"
+        stroke="#3b82f6" stroke-width="2"
+      />
+      <!-- 子節點文字（靠右） -->
+      <text
+        v-for="(child, i) in children"
+        :key="'t'+i"
+        data-side="left"
+        :x="leftMargin - 8"
+        :y="childY(i)+5"
+        text-anchor="end"
+        font-size="16"
+        fill="#64748b"
+      >{{ child }}</text>
+      <!-- 根節點文字（靠左） -->
+      <text
+        data-side="right"
+        :x="leftMargin + midX + rightGap + 8"
+        :y="midY+5"
+        text-anchor="start"
+        font-size="16"
+        fill="#64748b"
+      >{{ root }}</text>
+    </svg>
+  </div>
+  `
+});
+
+
+
+

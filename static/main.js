@@ -88,6 +88,8 @@ var app = new Vue({
     needApiKey: true,
     isGoGUI: false,
     isGUIButton: false,
+    chatContextType: "Choice",
+    settingsForAssistant: null,
   },
   created: function () {
     // Procedures to correctly render data:
@@ -173,20 +175,20 @@ var app = new Vue({
           var cbList = res;
           var cb = cbList.find(cb => cb.text === default_cb);
           if (cb) {
-              this.onRefreshCB(cb)
-                .then((res) => {
-                  this.refreshCBWorker(cb);
-                  cb.status = true;
-                  window.localStorage.setItem("cb", JSON.stringify(cb));
-                  window.localStorage.setItem("privilege", this.privilege);
-                  window.localStorage.setItem("isGoLLM", true);
-                  window.location.href = "/";
-                  this.showLoading = false;
-                  return
-                })
-                .catch((err) => {
-                  console.log(err);
-                })
+            this.onRefreshCB(cb)
+              .then((res) => {
+                this.refreshCBWorker(cb);
+                cb.status = true;
+                window.localStorage.setItem("cb", JSON.stringify(cb));
+                window.localStorage.setItem("privilege", this.privilege);
+                window.localStorage.setItem("isGoLLM", true);
+                window.location.href = "/";
+                this.showLoading = false;
+                return
+              })
+              .catch((err) => {
+                console.log(err);
+              })
           } else {
             alert("ControlBoard not found");
             this.showLoading = false;
@@ -460,10 +462,6 @@ var app = new Vue({
     },
     goCBGUI: function (cb) {
       this.showLoading = true;
-      console.log("test");
-      console.log("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-      console.log(cb)
-      console.log("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
       this.onRefreshCB(cb)
         .then((res) => {
           this.refreshCBWorker(cb);
@@ -486,8 +484,7 @@ var app = new Vue({
     goLLMGUI: function (cb) {
       this.currentPage = 2;
       this.selectedControlBoard = cb;
-      console.log("uuuuuuuuuuuuuuuuuuuuuuuuuuuuu")
-      console.log(cb)
+      this.chatContextType = "Choice";
 
       fetch(`/project/infos/${cb.text}`, { method: "GET" })
         .then(response => response.json())
@@ -782,15 +779,11 @@ var app = new Vue({
           })
           .catch((err) => {
             if (err.response) {
-              console.log(err.response.status); 
-              console.log("999999999999999999999999999999")
-              console.log(err.response.data)
               const data = err?.response?.data || {};
               const errorMsg = data.msg || data.message || 'Unknown error';
               this.makeToast('danger', 'Error', errorMsg);
               this.showLoading = false;
               this.$nextTick(() => {
-                // 確保畫面更新後再跳轉
                 setTimeout(() => {
                   window.location.href = "/";
                 }, 3000);
@@ -1003,6 +996,54 @@ var app = new Vue({
           if (err.response.status != 403)
             console.log("logout failed");
         })
+    },
+    createNAMode() {
+      this.chatContextType = "CreateNA";
+    },
+    async deleteNAMode() {
+      this.chatContextType = "DeleteNA";
+
+      try {
+        const response = await fetch("/llm/get_rules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cb_name: this.selectedControlBoard?.text ?? null,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        this.settingsForAssistant = data.data;
+      } catch (err) {
+        console.error("deleteNAMode 發生錯誤", err);
+      }
+    },
+    onBracketClick(setting, index) {
+      fetch("/llm/remove_na", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          setting: setting,
+          cb_id: this.selectedControlBoard ? this.selectedControlBoard.value : null,
+        }),
+      })
+      .then(response => {
+        if (!response.ok) {
+          return response.json().then(error => {
+            this.makeToast('danger', "Error", error.error);
+          });
+        } else {
+          this.makeToast('success', "Success", "成功刪除連接線");
+          this.settingsForAssistant.splice(index, 1);
+        }
+      })
+      .catch(err => {
+        this.makeToast('danger', "Error", err.message);
+      });
     },
     onApiKeyInput() {
       this.providersData[this.selectedProvider].api_key = this.apiKey;

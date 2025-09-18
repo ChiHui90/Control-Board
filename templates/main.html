@@ -393,18 +393,84 @@
           </div>
         </div>
       </div>
-      <div id="inputArea">
-        <textarea class="form-control" rows="1" id="chatInput" v-model="chatInput"
-          placeholder="Example : When the temperature is above 25°C, turn on the fan." ref="chatTextarea"></textarea>
-        <div id="button-team">
-          <el-button type="info" @click="goCBGUI(selectedControlBoard)" class="submitButton" v-if="isGUIButton" round>
-            GUI
-          </el-button>
-          <el-button type="primary" @click="submitChat" class="submitButton" :disabled="isChatButtonDisabled" round>
-            Start
-          </el-button>
+
+      <el-divider></el-divider>
+
+      <!-- 顯示主體 -->
+      <div>
+        <div v-if="chatContextType === 'Choice'" class="choice-panel">
+          <h3 class="choice-title">Choose an action to perform.</h3>
+          <div class="choice-options">
+            <button class="choice-btn" @click="createNAMode">
+              <span class="choice-name">Create Network Application</span>
+              <span class="choice-desc">Let the assistant know which connection you want to create</span>
+            </button>
+            <button class="choice-btn" @click="deleteNAMode">
+              <span class="choice-name">Delete Network Application</span>
+              <span class="choice-desc">Let the assistant know which connection you want to delete</span>
+            </button>
+          </div>
         </div>
+        <div v-else-if="chatContextType === 'CreateNA'">
+          <div class="suggestions-wrapper">
+            <div class="suggestions-title">Suggestions</div>
+            <ol class="suggestions-list">
+              <li>If <span class="highlight-text">&lt;condition&gt;</span>, then turn on <span
+                  class="highlight-text">&lt;device&gt;</span>.</li>
+              <li>Provided that <span class="highlight-text">&lt;condition&gt;</span>, you should turn on <span
+                  class="highlight-text">&lt;device&gt;</span>; otherwise, turn it off.</li>
+              <li>When <span class="highlight-text">&lt;condition&gt;</span>, turn on <span
+                  class="highlight-text">&lt;device&gt;</span> on <span class="highlight-text">&lt;weekdays&gt;</span>
+                between <span class="highlight-text">&lt;start
+                  time&gt;</span> and <span class="highlight-text">&lt;end time&gt;</span>.</li>
+            </ol>
+          </div>
+
+          <div id="inputArea">
+            <textarea class="form-control" rows="1" id="chatInput" v-model="chatInput" placeholder="Write something..."
+              ref="chatTextarea">
+            </textarea>
+
+            <div id="button-team">
+              <el-button type="info" @click="goCBGUI(selectedControlBoard)" class="submitButton" v-if="isGUIButton"
+                round>
+                GUI
+              </el-button>
+              <el-button type="primary" @click="submitChat" class="submitButton" :disabled="isChatButtonDisabled" round>
+                Start
+              </el-button>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="chatContextType === 'DeleteNA'">
+          <h5>Select the network application you want to delete. </h5>
+          <div class="bracket-container" v-if="settingsForAssistant && settingsForAssistant.length > 0">
+            <button v-for="(setting, index) in settingsForAssistant" :key="index" type="button" class="bracket-button"
+              @click="onBracketClick(setting, index)">
+              <span class="bracket-index">CBElement-<% setting.idx %></span>
+              <div class="backet-tree">
+                <bracket-tree :children="setting.input_device_name"
+                  :root="setting.output_device_name[0]"></bracket-tree>
+              </div>
+            </button>
+          </div>
+          <div v-else-if="Array.isArray(settingsForAssistant) && settingsForAssistant.length === 0">
+            <h5 style="color: hotpink; margin: 50px 0px;">No network application found.</h5>
+          </div>
+
+          <div v-else>
+            <div v-loading="true" element-loading-text="Loading..." element-loading-background="rgb(246, 244, 251)"
+              style="width: 100%; height: 200px; display: inline-block; background-color: #f6f4fb;">
+            </div>
+          </div>
+        </div>
+
       </div>
+
+      <!-- <bracket-tree :children="['A','B','C']" root="D"></bracket-tree>
+      <div style="margin-top:60px"></div>
+      <bracket-tree :children="['A','B']" root="E"></bracket-tree>
+      <bracket-tree :children="['A']" root="E"></bracket-tree> -->
     </div>
   </div>
 

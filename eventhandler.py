@@ -492,7 +492,7 @@ def get_rules(cb_id):
     try:
         cb = CB[cb_id]
         for rule in cb.rule_set:
-
+            print(rule.df_order)
             content = dict()
 
             content["openTimer"] = [int(data) for data in rule.time_open.strftime('%H:%M:%S').split(":")]
@@ -1514,6 +1514,115 @@ def get_llm():
         data[provider] = p
 
     return jsonify(data), 200
+
+@apis.route("/llm/get_rules", methods=["POST"])
+def get_cb_rules():
+    data: dict = request.get_json()
+    cb_name = data.get("cb_name")
+    print("cb: ", cb_name)
+
+    if cb_name is None:
+        return jsonify({"status": "error", "message": "Missing required field"}), 400
+    try:
+        status, project_info = get_proj_ag(cb_name, api_logger)
+        if not status:
+            return jsonify({"status": "error", "message": "No such Project"}), 404
+ 
+        cb_dfo_ids = dict()
+        cb_df_ids = dict()
+        dfo_id_to_name = dict()
+
+        idos = project_info["ido"]
+        odos = project_info["odo"]
+
+        dfo_id_to_name = dict()
+        for ido in project_info["ido"]:
+            for dfo in ido["dfo"]:
+                dfo_id_to_name[dfo["dfo_id"]] = dfo["alias_name"]
+
+        for odo in project_info["odo"]:
+            for dfo in odo["dfo"]:
+                dfo_id_to_name[dfo["dfo_id"]] = dfo["alias_name"]
+                
+        for ido in idos:
+            if ido["dm_name"] == "ControlBoard":
+                cb_dfo_ids["input"] = [dfo["dfo_id"] for dfo in ido["dfo"]]
+                cb_df_ids["input"] = [dfo["df_id"] for dfo in ido["dfo"]]
+                break
+
+        for odo in odos:
+            if odo["dm_name"] == "ControlBoard":
+                cb_dfo_ids["output"] = [dfo["dfo_id"] for dfo in odo["dfo"]]
+                cb_df_ids["output"] = [dfo["df_id"] for dfo in odo["dfo"]]
+                break
+
+        counter = defaultdict(int)
+        for na in project_info["na"]:
+            if len(na["input"]) == 1 and na["input"][0]["dfo_id"] in cb_dfo_ids["input"]:
+                counter[na["input"][0]["dfo_id"]] += 1
+            if len(na["output"]) == 1 and na["output"][0]["dfo_id"] in cb_dfo_ids["output"]:
+                counter[na["output"][0]["dfo_id"]] += 1
+
+        cb_idfo_id = sorted(cb_dfo_ids["input"])
+        cb_odfo_id = sorted(cb_dfo_ids["output"])
+
+        used_cb_elements = []
+        for idx, (ido, odo) in enumerate(zip(cb_idfo_id, cb_odfo_id)):
+            if counter[ido] >= 2 and counter[odo] >= 2:
+                data = dict()
+                for na in project_info["na"]:      
+                    in_single = len(na["input"]) == 1 and na["input"][0]["dfo_id"] == ido
+                    out_single = len(na["output"]) == 1 and na["output"][0]["dfo_id"] == odo
+
+                    if in_single and out_single:
+                        continue
+                
+                    if in_single:
+                        data["output_device_id"] = [na["output"][0]["dfo_id"]]
+                        data["output_device_name"] = [dfo_id_to_name[x] for x in data["output_device_id"]]
+                        data.setdefault("nas", set())
+                        data["nas"].add(na["na_id"])
+                                                            
+                    if out_single:
+                        data["input_device_id"] = [x["dfo_id"] for x in na["input"]]
+                        data["input_device_name"] = [dfo_id_to_name[x] for x in data["input_device_id"]]
+                        data.setdefault("nas", set())
+                        data["nas"].add(na["na_id"])
+
+                data["idx"] = idx + 1
+                data["input_cb_element_id"] =  ido
+                data["output_cb_element_id"] = odo
+                data["nas"] = list(data["nas"])
+                used_cb_elements.append(data)
+
+        return jsonify({"status": "success", "data": used_cb_elements})
+    except Exception as err:
+        api_logger.exception(err)
+        return jsonify({"status": "error", "message": "Internal Server Error"}), 500
+
+@apis.route("/llm/remove_na", methods=["POST"])
+def remove_cb_na():
+    data: dict = request.get_json()
+    setting = data.get("setting")
+    cb_id = data.get("cb_id")
+    print("ooooooooooooooooooo")
+    print("na_index: ", setting)
+    print("cb: ", cb_id)
+
+    if setting is None or cb_id is None:
+        return jsonify({"status": "error", "message": "Missing required field"}), 400
+    try:
+        remove_na_ids = setting.get("nas", [])
+        for na_id in remove_na_ids:
+            status, res = delete_na_ag(na_id, cb_id, api_logger)
+            if not status:
+                api_logger.exception(f"Error delete NA {res} failed, check api log file")
+                return jsonify({"status": "error", "message": "Internal Server Error"}), 500
+       
+        return jsonify({"status": "success", "message": "NetWork Application removed"})
+    except Exception as err:
+        api_logger.exception(err)
+        return jsonify({"status": "error", "message": "Internal Server Error"}), 500
 
 @apis.route("/llm/cb_agent", methods=["POST"])
 def invoke_cb_agent():
