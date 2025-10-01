@@ -230,6 +230,7 @@ body {
   margin: 0 auto;
   padding: 20px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  overflow-y: auto;
 }
 
 #inputArea {
@@ -268,7 +269,7 @@ body {
   margin-top: 10px;
   font-weight: 600;
   color: #1e293b;
-  font-size: large;
+  font-size: x-large;
 }
 
 .mr-3 {
@@ -354,7 +355,7 @@ body {
 }
 
 .suggestions-title {
-  font-size: large;
+  font-size: x-large;
   font-weight: 600;
   color: #475569;
   margin-bottom: 0.5rem;

@@ -413,14 +413,39 @@
         </div>
         <div v-else-if="chatContextType === 'CreateNA'">
           <div class="suggestions-wrapper">
+            <div class="suggestions-title">Device Feature</div>
+            <div style="display: flex;">
+              <div style="margin-right: 20px; width: 50%;">
+                <div style="font-size: large; font-weight: 600;"> Input </div>
+                <ol class="suggestions-list">
+                  <li v-for="feature in deviceFeatures.input" style="font-size: medium;">
+                    <% feature.d_name %> : <% feature.alias_name %>
+                  </li>
+                </ol>
+              </div>
+              <div style="width: 50%;">
+                <div style="font-size: large; font-weight: 600;"> Output </div>
+                <ol class="suggestions-list">
+                  <li v-for="feature in deviceFeatures.output" style="font-size: medium;">
+                    <% feature.d_name %> : <% feature.alias_name %>
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          <el-divider></el-divider>
+
+          <div class="suggestions-wrapper">
             <div class="suggestions-title">Suggestions</div>
             <ol class="suggestions-list">
               <li>If <span class="highlight-text">&lt;condition&gt;</span>, then turn on <span
-                  class="highlight-text">&lt;device&gt;</span>.</li>
+                  class="highlight-text">&lt;device feature&gt;</span>.</li>
               <li>Provided that <span class="highlight-text">&lt;condition&gt;</span>, you should turn on <span
-                  class="highlight-text">&lt;device&gt;</span>; otherwise, turn it off.</li>
+                  class="highlight-text">&lt;device feature&gt;</span>; otherwise, turn it off.</li>
               <li>When <span class="highlight-text">&lt;condition&gt;</span>, turn on <span
-                  class="highlight-text">&lt;device&gt;</span> on <span class="highlight-text">&lt;weekdays&gt;</span>
+                  class="highlight-text">&lt;device feature&gt;</span> on <span
+                  class="highlight-text">&lt;weekdays&gt;</span>
                 between <span class="highlight-text">&lt;start
                   time&gt;</span> and <span class="highlight-text">&lt;end time&gt;</span>.</li>
             </ol>

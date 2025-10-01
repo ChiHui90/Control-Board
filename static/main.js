@@ -90,6 +90,7 @@ var app = new Vue({
     isGUIButton: false,
     chatContextType: "Choice",
     settingsForAssistant: null,
+    deviceFeatures: [],
   },
   created: function () {
     // Procedures to correctly render data:
@@ -997,8 +998,27 @@ var app = new Vue({
             console.log("logout failed");
         })
     },
-    createNAMode() {
+    async createNAMode() {
       this.chatContextType = "CreateNA";
+      
+      try {
+        const response = await fetch("/llm/get_device_features", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cb_name: this.selectedControlBoard?.text ?? null,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        this.deviceFeatures = data.data;
+      } catch (err) {
+        console.error("createNAMode 發生錯誤", err);
+      }
     },
     async deleteNAMode() {
       this.chatContextType = "DeleteNA";

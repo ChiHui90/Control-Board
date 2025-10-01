@@ -262,7 +262,6 @@ def project_infos(p_id):
 
 
 @apis.route('/cb/<int:cb_id>/new_rules', methods=['POST'])
-@requires_login
 @orm.db_session
 def set_rules(cb_id): 
     # data validation
@@ -452,7 +451,6 @@ def set_rules(cb_id):
 
 
 @apis.route('/cb/<int:cb_id>/rules', methods=['GET'])
-@requires_login
 @orm.db_session
 def get_rules(cb_id): 
     '''
@@ -670,7 +668,6 @@ def get_datum(cb_id):
         abort(500, err)
 
 @apis.route('/cb/refresh_cb/<int:cb_id>', methods=['GET'])
-@requires_login
 @orm.db_session
 def refresh_cb(cb_id): 
     api_logger.info('\tTimestamp\t--> Function refresh_cb')
@@ -1280,12 +1277,11 @@ def get_cb(usr_account):
 
 
 @apis.route('/cb/get_cb_id/<string:cb_name>', methods=['GET'])
-@requires_login
 @orm.db_session
 def get_cb_id(cb_name):
     '''
     '''
-    print(cb_name)
+    print("IIIIIIIIIIIIIIII: ", cb_name)
     cb = CB.get(cb_name=cb_name)
     if cb:
         return jsonify({"cb_id": cb.cb_id}), 200
@@ -1522,7 +1518,7 @@ def get_cb_rules():
     print("cb: ", cb_name)
 
     if cb_name is None:
-        return jsonify({"status": "error", "message": "Missing required field"}), 400
+        return jsonify({"status": "error", "message": "Missing required field: cb_name"}), 400
     try:
         status, project_info = get_proj_ag(cb_name, api_logger)
         if not status:
@@ -1655,7 +1651,7 @@ def invoke_cb_agent():
         project_info= dict(),
         selected_df= dict(),
         base_url= base_url,
-        file_name= uuid.uuid4().hex[:8] + ".json",
+        file_name= uuid.uuid4().hex[:8],
     )
   
     try:
@@ -1667,6 +1663,58 @@ def invoke_cb_agent():
     except Exception as err:
         api_logger.exception(str(err))
         return jsonify({"error": str(err)}), 500
+
+@apis.route("/llm/get_device_features", methods=["POST"])
+def get_device_features():
+    data: dict = request.get_json()
+    cb_name = data.get("cb_name")
+    print("cb: ", cb_name)
+
+    if cb_name is None:
+        return jsonify({"status": "error", "message": "Missing required field: cb_name"}), 400
+    try:
+        status, project_info = get_proj_ag(cb_name, api_logger)
+        if not status:
+            return jsonify({"status": "error", "message": "No such Project"}), 404
+
+        input_device = []
+        output_device = []
+        idos = project_info["ido"]
+        odos = project_info["odo"]
+
+        for ido in idos:
+            if ido["dm_name"] == "ControlBoard":
+                continue
+            d_name = ido["d_name"]
+            dfos = ido["dfo"]
+            for dfo in dfos:
+                device_feature = {
+                    "d_name": d_name,
+                    "dm_name": ido["dm_name"],
+                    "do_id": ido["do_id"],
+                    "alias_name": dfo["alias_name"],
+                    "dfo_id": dfo["dfo_id"]
+                }
+                input_device.append(device_feature)
+
+        for odo in odos:
+            if odo["dm_name"] == "ControlBoard":
+                continue
+            d_name = odo["d_name"]
+            dfos = odo["dfo"]
+            for dfo in dfos:
+                device_feature = {
+                    "d_name": d_name,
+                    "dm_name": odo["dm_name"],
+                    "do_id": odo["do_id"],
+                    "alias_name": dfo["alias_name"],
+                    "dfo_id": dfo["dfo_id"]
+                }
+                output_device.append(device_feature)
+        return {"status": "success", "data": {"input": input_device, "output": output_device}}
+    except Exception as err:
+        api_logger.exception(err)
+        return jsonify({"status": "error", "message": "Internal Server Error"}), 500
 
 @apis.errorhandler(Exception)
 def handle_all_exceptions(e):

@@ -91,10 +91,11 @@ def get_user_device(project_info: dict) -> dict:
     for ido in idos:
         if ido["dm_name"] == "ControlBoard":
             continue
-
+        d_name = ido["d_name"]
         dfos = ido["dfo"]
         for dfo in dfos:
             device_feature = {
+                "d_name": d_name,
                 "dm_name": ido["dm_name"],
                 "do_id": ido["do_id"],
                 "alias_name": dfo["alias_name"],
@@ -103,18 +104,19 @@ def get_user_device(project_info: dict) -> dict:
             input_device.append(device_feature)
 
     for odo in odos:
-            if odo["dm_name"] == "ControlBoard":
-                continue
-
-            dfos = odo["dfo"]
-            for dfo in dfos:
-                device_feature = {
-                    "dm_name": odo["dm_name"],
-                    "do_id": odo["do_id"],
-                    "alias_name": dfo["alias_name"],
-                    "dfo_id": dfo["dfo_id"]
-                }
-                output_device.append(device_feature)
+        if odo["dm_name"] == "ControlBoard":
+            continue
+        d_name = odo["d_name"]
+        dfos = odo["dfo"]
+        for dfo in dfos:
+            device_feature = {
+                "d_name": d_name,
+                "dm_name": odo["dm_name"],
+                "do_id": odo["do_id"],
+                "alias_name": dfo["alias_name"],
+                "dfo_id": dfo["dfo_id"]
+            }
+            output_device.append(device_feature)
     return {"input": input_device, "output": output_device}
 
 def get_cb_feature_id(project_info: dict) -> dict:

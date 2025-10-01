@@ -1,4 +1,5 @@
 import ast
+import re
 
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import JsonOutputParser
@@ -66,39 +67,73 @@ def project_info_fetcher(state: GraphState):
 
 def device_selector(state: GraphState):
     print("workflow: device_selector")
+    selected_df = {"input": [], "output": []}
+
     user_device = get_user_device(state.project_info)
-    user_ido = str(user_device["input"]).replace("'", "\"")
-    user_odo = str(user_device["output"]).replace("'", "\"")
+    matches = re.findall(r'(\S+\s*):(\s*\S+)', state.user_input)
 
-    prompt = PromptTemplate(
-        template=select_devices_prompt,
-        input_variables=["user_ido", "user_odo", "user_input"]
-    )
-    chain = prompt | state.llm | JsonOutputParser() 
-    state.selected_df = chain.invoke({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input})
-
-    filter_input = []
-    for selected_df in state.selected_df["input"]:
-        for ido in user_device["input"]:
-            if selected_df["dfo_id"] == ido["dfo_id"] and selected_df["alias_name"] == ido["alias_name"]:
-                filter_input.append(selected_df)
-    state.selected_df["input"] = filter_input
-
-    filter_output = []
-    for selected_df in state.selected_df["output"]:
-        for odo in user_device["output"]:
-            if selected_df["dfo_id"] == odo["dfo_id"] and selected_df["alias_name"] == odo["alias_name"]:
-                filter_output.append(selected_df)
-    state.selected_df["output"] = filter_output
-
-    pp = prompt.invoke({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input})
-    with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
-        f.write(str(pp) + "\n")
-        f.write(str(state.selected_df) + "\n\n")
+    if not matches:
+        raise AgentError("No valid input found. Expected format: <device_name>:<device_feature>")
     
-    if len(state.selected_df["input"]) == 0 or len(state.selected_df["output"]) == 0:
-        error_status = f'!!!!!!!!!!!!!\n{str({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input, "llm_respone": state.selected_df})}\n!!!!!!!!!!!!!!!!'
-        raise AgentError("沒有適合的 input device 或 output device", error_status)
+    print("matches: ", matches)
+    print("user_device: ", user_device)
+
+    for d_name, alias_name in matches:
+        d_name = d_name.strip()
+        alias_name = alias_name.strip()
+
+        for device in user_device["input"]:
+            if device["d_name"].lower() == d_name.lower() and device["alias_name"].lower() == alias_name.lower():
+                selected_df["input"].append(device)
+                break
+        
+        for device in user_device["output"]:
+            print("device d_name: ", device["d_name"])
+            print("device alias_name: ", device["alias_name"])
+            print("d_name: ", d_name)
+            print("alias_name: ", alias_name)
+            print("--------------------")
+            if device["d_name"].lower() == d_name.lower() and device["alias_name"].lower() == alias_name.lower():
+                selected_df["output"].append(device)
+                break
+    
+    print("selected_df before LLM: ", selected_df)
+    state.selected_df = selected_df
+    return state
+    
+    ''' LLM 精确匹配 d_name 和 alias_name '''
+    # user_ido = str(user_device["input"]).replace("'", "\"")
+    # user_odo = str(user_device["output"]).replace("'", "\"")
+
+    # prompt = PromptTemplate(
+    #     template=select_devices_prompt,
+    #     input_variables=["user_ido", "user_odo", "user_input"]
+    # )
+    # chain = prompt | state.llm | JsonOutputParser() 
+    # state.selected_df = chain.invoke({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input})
+
+    # filter_input = []
+    # for selected_df in state.selected_df["input"]:
+    #     for ido in user_device["input"]:
+    #         if selected_df["dfo_id"] == ido["dfo_id"] and selected_df["alias_name"] == ido["alias_name"]:
+    #             filter_input.append(selected_df)
+    # state.selected_df["input"] = filter_input
+
+    # filter_output = []
+    # for selected_df in state.selected_df["output"]:
+    #     for odo in user_device["output"]:
+    #         if selected_df["dfo_id"] == odo["dfo_id"] and selected_df["alias_name"] == odo["alias_name"]:
+    #             filter_output.append(selected_df)
+    # state.selected_df["output"] = filter_output
+
+    # pp = prompt.invoke({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input})
+    # with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
+    #     f.write(str(pp) + "\n")
+    #     f.write(str(state.selected_df) + "\n\n")
+    
+    # if len(state.selected_df["input"]) == 0 or len(state.selected_df["output"]) == 0:
+    #     error_status = f'!!!!!!!!!!!!!\n{str({"user_ido": user_ido, "user_odo": user_odo, "user_input": state.user_input, "llm_respone": state.selected_df})}\n!!!!!!!!!!!!!!!!'
+    #     raise AgentError("沒有適合的 input device 或 output device", error_status)
     return state
 
 def cb_network(state: GraphState):
@@ -177,6 +212,11 @@ def cb_update_rule(state: GraphState):
     new_rule["actuator_alias"] = old_rule["actuator_alias"]
     new_rule["rule_id"] = old_rule["rule_id"]
     rules[selected_idx] = new_rule
+
+    for old_sensor, new_sensor in zip(old_rule["sensors"], new_rule["sensors"]):
+        new_sensor["sensor_alias"] = old_sensor["sensor_alias"]
+        new_sensor["sensor_index"] = old_sensor["sensor_index"]
+        new_sensor["is_show_operation"] = old_sensor["is_show_operation"]
   
     response = requests.post(url + f"cb/{cb_id}/new_rules", json=rules)
     if response.status_code != 200:

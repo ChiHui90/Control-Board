@@ -98,11 +98,12 @@ User description:
 {user_input}
 
 Rules:
-- - A match requires "dm_name" and "alias_name" to be semantically equivalent to the user description (not just partial overlap).
-- Input: Match only the trigger conditions; may include multiple matches. If no matches, return [].
-- Output: Match only the action device; at most one match. If no matches, return [].
-- If no match, return [].
-- Do not invent or guess.
+- A match REQUIRES "d_name" AND "alias_name" to be EXACTLY and SEMANTICALLY EQUIVALENT to the user description.  
+- Do not allow partial overlaps, fuzzy matches, or loose interpretation.  
+- Input: Match only the trigger conditions; may include multiple matches. If no matches, return [].  
+- Output: Match only the action device; at most one match. If no matches, return [].  
+- If no match, return [].  
+- Do not invent, infer, or guess.  
 - Return ONLY valid JSON with keys "input" and "output".  
 - No extra text.
 
@@ -110,6 +111,7 @@ Format:
 {{
   "input": [
     {{
+      "d_name": "...",
       "dm_name": "...",
       "do_id": "...",
       "alias_name": "...",
@@ -118,6 +120,7 @@ Format:
   ],
   "output": [
     {{
+      "d_name": "...",
       "dm_name": "...",
       "do_id": "...",
       "alias_name": "...",
