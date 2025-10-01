@@ -225,7 +225,7 @@ body {
 }
 
 #chatBox {
-  width: 60%;
+  width: 80%;
   height: 94vh;
   margin: 0 auto;
   padding: 20px;
@@ -300,16 +300,12 @@ body {
 .choice-options {
   display: flex;
   flex-direction: row;
-  /* 橫排 */
   gap: 1rem;
-  /* 加間距 */
   justify-content: center;
-  /* 置中（可選） */
 }
 
 .choice-btn {
   flex: 1;
-  /* 讓兩個等寬 */
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 0.75rem;
@@ -318,7 +314,6 @@ body {
   cursor: pointer;
   transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
   min-width: 300px;
-  /* 限制最小寬度避免太窄 */
 }
 
 .choice-btn:hover {
@@ -359,6 +354,25 @@ body {
   font-weight: 600;
   color: #475569;
   margin-bottom: 0.5rem;
+}
+
+.create-na-divider {
+  align-self: stretch;
+  margin: 0 24px;
+}
+
+.create-na-divider.el-divider--vertical {
+  height: auto;
+}
+
+.create-na-divider.el-divider--vertical::before {
+  height: 100%;
+}
+
+.device-feature-empty {
+  font-size: 0.95rem;
+  color: #9ca3af;
+  padding: 0.6rem 0rem;
 }
 
 .suggestions-list {
