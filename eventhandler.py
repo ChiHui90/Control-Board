@@ -159,6 +159,8 @@ def open_cb_gui(cb_name):
             ask_login = {"prompt": "login"}
             session["cb_name"] = cb_name
             return oauth2_client.iottalk.authorize_redirect(redirect_url, **ask_login)
+        
+        print("已登入")
 
         account = CB_Account.get(account=session["user"])
         if account is None:
@@ -204,6 +206,8 @@ def open_cb_gui(cb_name):
 
         for t in threads:
             t.join()
+
+        get_proj_ag(cb_name, api_logger)
         
         df_num = 0
         for odo in project_info["odo"]:
@@ -1117,7 +1121,9 @@ def create_cb():
                 break
         for idf, odf in zip(cb_idf, cb_odf):
             dfo_ids.append([(cb_ido, idf["df_id"]), (cb_odo, odf["df_id"])])
-        start = time.time()
+        
+        # test, test, test
+        user_odf_num = 10
         for i, dfo_pair in enumerate(dfo_ids):
             if i >= user_odf_num:
                 break
@@ -1651,7 +1657,7 @@ def invoke_cb_agent():
         project_info= dict(),
         selected_df= dict(),
         base_url= base_url,
-        file_name= uuid.uuid4().hex[:8],
+        file_name= str(int(time.time())),
     )
   
     try:

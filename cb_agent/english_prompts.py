@@ -36,6 +36,10 @@ Please output the classification result according to the above instructions:
 sensor_config_prompt = '''
 You need to convert sensor conditions into JSON format according to the following rules:
 
+## Additional Clarification
+- When the user says "turn on" or "enable" an actuator, the condition that triggers it should be set in `comparison_open` and `threshold_open`.
+- When the user says "turn off" or "disable" an actuator, the condition that triggers it should be set in `comparison_close` and `threshold_close`.
+
 ## JSON Field Rules
 
 ### Main Settings

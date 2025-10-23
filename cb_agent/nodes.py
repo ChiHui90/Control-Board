@@ -45,7 +45,7 @@ def cb_classify_features(state: GraphState):
 def extract_categories(state: GraphState):
     print("workflow: extract_categories")
     
-    if "connect" in state.categories:
+    if "other" not in state.categories:
         return "connect"
     else:
         error_status = f"\n!!!!!!!{str({"user_input": state.user_input, "category": state.categories})}\n!!!!!!!"
@@ -71,6 +71,7 @@ def device_selector(state: GraphState):
 
     user_device = get_user_device(state.project_info)
     matches = re.findall(r'(\S+\s*):(\s*\S+)', state.user_input)
+    matches = list(set(matches)) 
 
     if not matches:
         raise AgentError("No valid input found. Expected format: <device_name>:<device_feature>")
@@ -82,7 +83,12 @@ def device_selector(state: GraphState):
         d_name = d_name.strip()
         alias_name = alias_name.strip()
 
+        if alias_name[-1] in [",", ";", ".", "，", "；", "。", "、", " ", "！", "?", "？", "!", ]:
+            alias_name = alias_name[:-1]
+
         for device in user_device["input"]:
+            if device["d_name"] == None:
+                raise AgentError("Please Bind Device. Device name is None.")
             if device["d_name"].lower() == d_name.lower() and device["alias_name"].lower() == alias_name.lower():
                 selected_df["input"].append(device)
                 break
@@ -138,6 +144,7 @@ def device_selector(state: GraphState):
 
 def cb_network(state: GraphState):
     print("workflow: cb_network")
+    return state
     project_info = state.project_info
     unused_cb_dfo = get_unused_cb_dfo(project_info)
 
@@ -204,19 +211,20 @@ def cb_update_rule(state: GraphState):
 
     chain = prompt | state.llm | JsonOutputParser() 
     new_rule = chain.invoke({"user_input": state.user_input, "rule": rule})
-    with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
-        f.write(str(c) + "\n")
-        f.write(str(new_rule) + "\n\n")
 
     old_rule = rules[selected_idx]
     new_rule["actuator_alias"] = old_rule["actuator_alias"]
     new_rule["rule_id"] = old_rule["rule_id"]
-    rules[selected_idx] = new_rule
-
     for old_sensor, new_sensor in zip(old_rule["sensors"], new_rule["sensors"]):
         new_sensor["sensor_alias"] = old_sensor["sensor_alias"]
         new_sensor["sensor_index"] = old_sensor["sensor_index"]
         new_sensor["is_show_operation"] = old_sensor["is_show_operation"]
+    print("nnnnnnnnnnnnnnnnnnnnnnnn")
+    with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
+        f.write(str(c) + "\n")
+        f.write(str(new_rule) + "\n\n")
+    print(new_rule)
+    rules[selected_idx] = new_rule
   
     response = requests.post(url + f"cb/{cb_id}/new_rules", json=rules)
     if response.status_code != 200:

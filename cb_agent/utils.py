@@ -235,6 +235,29 @@ def query_ollama(prompt: str, base_url: str, model: str, api_key: str):
         print(f"Error querying Ollama: {e}")
         return None
 
+# 試算用，使用本地 ollama     gemma3:4b
+def query_llama(prompt: str, base_url: str, model: str, api_key: str):
+    if base_url.endswith("/"):
+        base_url = base_url[:-1]
+
+    url = "http://140.113.110.4:11435/api/chat"
+    data = {
+        "model": "gemma3:4b",
+        "messages": [
+            {"role": "user", "content": prompt }
+        ],
+        "stream": False,
+    }
+
+    try:
+        response = requests.post(url, json=data)
+        data = response.json()
+        return data["message"]["content"].replace("True", "true").replace("False", "false")
+    except requests.exceptions.RequestException as e:
+        print(f"Error querying Llama: {e}")
+        return None
+
+
 if __name__ == "__main__":
     project_info = get_project_info("***0611")
     response = find_cb_na_id(project_info, 9)

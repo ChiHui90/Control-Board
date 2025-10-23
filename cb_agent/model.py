@@ -8,7 +8,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.schema import Generation, LLMResult
 
-from .utils import query_ollama
+from .utils import query_ollama, query_llama
 
 class GraphState(BaseModel):
     # query: str = Field(description="The original search query")
@@ -37,7 +37,7 @@ class CustomOllama(BaseLLM, BaseModel):
         return self.model
     
     def _call(self, prompt: str, stop = None, run_manager = None, **kwargs) -> str:
-        response = query_ollama(prompt, self.base_url, self.model, self.api_key)
+        response = query_llama(prompt, self.base_url, self.model, self.api_key)
         return response
 
     def _generate(self, prompts: list[str], stop = None, run_manager = None, **kwargs) -> LLMResult:
