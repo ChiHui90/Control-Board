@@ -34,9 +34,20 @@ def cb_classify_features(state: GraphState):
         template=cb_classify_features_prompt,
         input_variables=["user_input"]
     )
-    chain = prompt | state.llm | PythonListOutputParser() 
-    state.categories = chain.invoke({"user_input": state.user_input})
-    print("使用者輸入分類: ", state.categories)
+
+    categories = None
+    for _ in range(3):
+        try:
+            chain = prompt | state.llm | PythonListOutputParser() 
+            categories = chain.invoke({"user_input": state.user_input})
+            print("使用者輸入分類: ", categories)
+            break
+        except Exception as err:
+            print(err)
+    if categories is None:
+        raise AgentError("Failed to Classify User Input")
+    
+    state.categories = categories
     with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
         f.write(str(state.user_input) + "\n")
         f.write(str(state.categories) + "\n\n")
@@ -209,8 +220,17 @@ def cb_update_rule(state: GraphState):
 
     c = prompt.invoke({"user_input": state.user_input, "rule": rule})
 
-    chain = prompt | state.llm | JsonOutputParser() 
-    new_rule = chain.invoke({"user_input": state.user_input, "rule": rule})
+    new_rule = None
+    for _ in range(3):
+        try:
+            chain = prompt | state.llm | JsonOutputParser() 
+            new_rule = chain.invoke({"user_input": state.user_input, "rule": rule})
+            break
+        except Exception as err:
+            print(err)
+    
+    if new_rule is None:
+        raise AgentError("LLM Output Parsing Failed")
 
     old_rule = rules[selected_idx]
     new_rule["actuator_alias"] = old_rule["actuator_alias"]
