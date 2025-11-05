@@ -1098,6 +1098,11 @@ var app = new Vue({
       this.chatInput = "";
       this.isChatButtonDisabled = false;
     },
+    addToChatInput(deviceName, featureName) {
+      if (!deviceName || !featureName) return;
+      this.chatInput += ` ${deviceName}:${featureName} `;
+    },
+
     // onUpdateSensorCod({ ruleID, data }) {
     //   // TODO
     //   //   sensorCod:{

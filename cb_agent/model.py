@@ -37,7 +37,7 @@ class CustomOllama(BaseLLM, BaseModel):
         return self.model
     
     def _call(self, prompt: str, stop = None, run_manager = None, **kwargs) -> str:
-        response = query_llama(prompt, self.base_url, self.model, self.api_key)
+        response = query_ollama(prompt, self.base_url, self.model, self.api_key)
         return response
 
     def _generate(self, prompts: list[str], stop = None, run_manager = None, **kwargs) -> LLMResult:
