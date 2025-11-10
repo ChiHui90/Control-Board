@@ -1445,7 +1445,7 @@ def oauth2_callback():
     try:
         user = CB_Account.get(account=user_info["email"])
 
-        if None is user:  # Create a new account
+        if user is None:  # Create a new account
             num_accounts = CB_Account.select().count()
             print("create new account")
             user = CB_Account(
