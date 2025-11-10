@@ -115,14 +115,12 @@ def render_index_cb(cb_name):
                 return jsonify(data), 200
             
             # 判斷是否都 bind device 了
-            # all_device_object = response["result"]["ido"] + response["result"]["odo"]
-            # for do in all_device_object:
-            #     print("iiiiiiiiiiiiiiiiiiiiiiiiii")
-            #     print(do)
-            #     if do["d_name"] is None and do["dm_name"] != "ControlBoard":
-            #         data["error"] = "Please Bind Device"
-            #         print(jsonify(data))
-            #         return jsonify(data), 200
+            all_device_object = response["result"]["ido"] + response["result"]["odo"]
+            for do in all_device_object:
+                if do["d_name"] is None and do["dm_name"] != "ControlBoard":
+                    data["error"] = "Please Bind Device"
+                    print(jsonify(data))
+                    return jsonify(data), 200
         else:
             data["error"] = str(response)
             return jsonify(data), 200
@@ -304,10 +302,6 @@ def set_rules(cb_id):
     invalid_list = list()
     rules = request.json
     try:
-        print('*' * 30)
-        #print(type(rules))
-        print("hihihihihihihi",rules)
-
         '''
         ******************************
         rules = [
@@ -1240,7 +1234,6 @@ def get_cb(usr_account):
             Otherwise `optionProjects` would contains all CBs.
     '''
     try:
-        print("uuuuuuuuuuuuuuuuuuuuuuuu")
         print("usr_account", usr_account)
         if "self" == usr_account:  # Access current logined user's accessible CBs.
             usr_account = session["user"]

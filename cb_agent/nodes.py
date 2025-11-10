@@ -40,17 +40,18 @@ def cb_classify_features(state: GraphState):
         try:
             chain = prompt | state.llm | PythonListOutputParser() 
             categories = chain.invoke({"user_input": state.user_input})
-            print("使用者輸入分類: ", categories)
             break
         except Exception as err:
             print(err)
+
+    with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
+        f.write("user input:\n" + str(state.user_input) + "\n\n")
+        f.write("llm response category:\n" + str(categories) + "\n\n")
+
     if categories is None:
         raise AgentError("Failed to Classify User Input")
     
     state.categories = categories
-    with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
-        f.write(str(state.user_input) + "\n")
-        f.write(str(state.categories) + "\n\n")
     return state
 
 def extract_categories(state: GraphState):
@@ -72,6 +73,8 @@ def project_info_fetcher(state: GraphState):
     }
     response = _post("ccm_api", data)
     if response["state"] == "error":
+        with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
+            f.write("ccm_api error:\n" + str(response) + "\n\n")
         raise AgentError(f"Cannot find project in IoTtalk: {state.project_name}")
     state.project_info = response
     return state
@@ -85,6 +88,8 @@ def device_selector(state: GraphState):
     matches = list(set(matches)) 
 
     if not matches:
+        with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
+            f.write("device selector error:\n" + "No valid input found." + "\n\n")
         raise AgentError("No valid input found. Expected format: <device_name>:<device_feature>")
     
     print("matches: ", matches)
@@ -115,6 +120,8 @@ def device_selector(state: GraphState):
                 break
 
     if len(selected_df["input"]) == 0 or len(selected_df["output"]) == 0:
+        with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
+            f.write("device selector error:\n" + "Input device or output device cannot be empty." + "\n\n")
         raise AgentError("Input device or output device cannot be empty.")
     
     print("selected_df: ", selected_df)
@@ -188,8 +195,10 @@ def cb_update_rule(state: GraphState):
 
     response = requests.get(url + f"cb/refresh_cb/{cb_id}")
     print("Success: refresh cb" if response.status_code == 200 else "Fail: refresh cb")
-    if response != 200:
-        AgentError("Failed to refresh CB.")
+    if response.status_code != 200:
+        with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
+            f.write("cb_update_rule:\n" + "Failed to refresh CB." + "\n\n")
+        raise AgentError("Failed to refresh CB.")
 
     response = requests.get(url + f"cb/{cb_id}/rules")
     rules = response.json()
@@ -211,6 +220,8 @@ def cb_update_rule(state: GraphState):
 
     print("selected_rule_idx: ", selected_idx)
     if selected_idx is None:
+        with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
+            f.write("cb_update_rule:\n" + "Can not find rule." + "\n\n")
         raise AgentError("Can not find rule")
     
     rule = str(rules[selected_idx]).replace("'", "\"")
@@ -232,6 +243,8 @@ def cb_update_rule(state: GraphState):
             print(err)
     
     if new_rule is None:
+        with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
+            f.write("cb_update_rule:\n" + "LLM Output Parsing Failed" + "\n\n")
         raise AgentError("LLM Output Parsing Failed")
 
     old_rule = rules[selected_idx]
@@ -241,16 +254,18 @@ def cb_update_rule(state: GraphState):
         new_sensor["sensor_alias"] = old_sensor["sensor_alias"]
         new_sensor["sensor_index"] = old_sensor["sensor_index"]
         new_sensor["is_show_operation"] = old_sensor["is_show_operation"]
-    print("nnnnnnnnnnnnnnnnnnnnnnnn")
+
     with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
         f.write(str(c) + "\n")
         f.write(str(new_rule) + "\n\n")
-    print(new_rule)
+
     rules[selected_idx] = new_rule
   
     response = requests.post(url + f"cb/{cb_id}/new_rules", json=rules)
     if response.status_code != 200:
         error_status = f'\n!!!!!!!!!!!!!\n{str({"rule": rule, "user_input": state.user_input, "llm_respone": new_rule})}\n!!!!!!!!!!!!!!!!'
+        with open(f"./data/{state.file_name}.txt", "a", encoding="utf-8") as f:
+            f.write("cb_update_rule:\n" + "Failed to set new rule" + "\n" + str(error_status) + "\n\n")
         raise AgentError(f'Failed to set new rule', error_status)
 
     print("Success: set new rules" if response.status_code == 200 else "Fail: set new rules")
