@@ -1122,8 +1122,6 @@ def create_cb():
         for idf, odf in zip(cb_idf, cb_odf):
             dfo_ids.append([(cb_ido, idf["df_id"]), (cb_odo, odf["df_id"])])
         
-        # test, test, test
-        user_odf_num = 10
         for i, dfo_pair in enumerate(dfo_ids):
             if i >= user_odf_num:
                 break

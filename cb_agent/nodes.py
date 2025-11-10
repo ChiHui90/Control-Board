@@ -113,8 +113,11 @@ def device_selector(state: GraphState):
             if device["d_name"].lower() == d_name.lower() and device["alias_name"].lower() == alias_name.lower():
                 selected_df["output"].append(device)
                 break
+
+    if len(selected_df["input"]) == 0 or len(selected_df["output"]) == 0:
+        raise AgentError("Input device or output device cannot be empty.")
     
-    print("selected_df before LLM: ", selected_df)
+    print("selected_df: ", selected_df)
     state.selected_df = selected_df
     return state
     
@@ -155,7 +158,6 @@ def device_selector(state: GraphState):
 
 def cb_network(state: GraphState):
     print("workflow: cb_network")
-    return state
     project_info = state.project_info
     unused_cb_dfo = get_unused_cb_dfo(project_info)
 
