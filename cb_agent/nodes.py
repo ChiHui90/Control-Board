@@ -84,7 +84,8 @@ def device_selector(state: GraphState):
     selected_df = {"input": [], "output": []}
 
     user_device = get_user_device(state.project_info)
-    matches = re.findall(r'(\S+\s*):(\s*\S+)', state.user_input)
+    rule = r'([A-Za-z0-9+\-_!@#$%^&*\[\]\{\}"\'|]+)\s*:\s*([A-Za-z0-9+\-_!@#$%^&*\[\]\{\}"\'|]+)'
+    matches = re.findall(rule, state.user_input)
     matches = list(set(matches)) 
 
     if not matches:
