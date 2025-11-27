@@ -169,6 +169,7 @@ def get_unused_cb_dfo(project_info: dict) -> int:
 
         if dfo_counter[cb_output_id] == 1 and dfo_counter[cb_input_id] == 1:
             return i
+    return 0
 
 def find_cb_na_id(project_info: dict, cb_dfo: int):
     cb_feature_id = get_cb_feature_id(project_info)

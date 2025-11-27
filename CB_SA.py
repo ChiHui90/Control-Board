@@ -537,7 +537,6 @@ class AG_SA():
 
                 status["prev_status"] = now_status # be aware of call by reference and call by value
 
-                print("CCCCCCCCCCCCCCCCCCCC status ", status)
                 self.socket.send_json(status)
                 print('[',time.time(),']','  CB_SA  finish check_rules')
                 

@@ -119,7 +119,6 @@ def render_index_cb(cb_name):
             for do in all_device_object:
                 if do["d_name"] is None and do["dm_name"] != "ControlBoard":
                     data["error"] = "Please Bind Device"
-                    print(jsonify(data))
                     return jsonify(data), 200
         else:
             data["error"] = str(response)
@@ -254,9 +253,15 @@ def get_infos():
     return f'https://{env_config["IoTtalk"]["ServerCCMIP"]}/connection#', 200
 
 @apis.route("/project/infos/<string:p_id>", methods=["GET"])
+@orm.db_session
 @requires_login
 def project_infos(p_id):
-    state, data = get_project_info(p_id, api_logger)
+    cb:CB = CB.get(p_id=p_id)
+    if cb:
+        cb_name = cb.cb_name
+        state, data = get_project_info(cb_name, api_logger)
+    else:
+        return "can not find cb", 400
     if state:
         return data, 200
     else:
@@ -966,12 +971,10 @@ def refresh_cb(cb_id):
             abort(500, f"Create CB {cb.cb_name} failed at registering device, check api log and AG")
         cb.ag_token = ag_token
 
-        print("ccccccccccrrrrrrrrrreeeeeeeaaaaaaaatttttttt: ", ag_token)
 
         # Bind device to DO
         time.sleep(0.5)  # Uncomment this if the IoTtalk Server cannot create DO in time.
         do_id = cb.do_id.split(",")
-        print("dodddddddddddiiiiiiiiiiiiiiiddddddd: ", do_id)
         status, dm_name = bind_device_ag(cb.mac_addr, cb.p_id, do_id, api_logger)
         if not status:
             deregister_ag(cb.ag_token, api_logger)
@@ -1031,18 +1034,18 @@ def create_cb():
     Creates an empty CB. Further steps are to be triggered by refresh_CB event after
         User has setup GUI connections(NAs).
     Args:
-        new_cb: Name of this CB given by the user.
+        new_cb_name: Name of this CB given by the user.
 
     Returns:
         Status code: 200 / 400 / 500.
         msg: Corresponding execution result.
     '''
-    new_cb = request.get_data().decode("utf-8")
+    new_cb_name = request.get_data().decode("utf-8")
     mac_addr = str(uuid.uuid4())
 
-    cb:CB = CB.get(cb_name=new_cb)
+    cb:CB = CB.get(cb_name=new_cb_name)
     if cb is None:
-        cb = CB(cb_name=new_cb, ag_token="NotCreated", mac_addr=mac_addr,
+        cb = CB(cb_name=new_cb_name, ag_token="NotCreated", mac_addr=mac_addr,
                 p_id=-1, do_id="-1", status=False, na_id="-1", dedicated=True)
     else:
         deregister_ag(cb.ag_token, api_logger)
@@ -1054,13 +1057,13 @@ def create_cb():
     try:
         new_project = True
         # Create Project
-        status, p_id = create_proj_ag(new_cb, api_logger)
+        status, p_id = create_proj_ag(new_cb_name, api_logger)
         if not status:  # Project already exists
             new_project = False
             cb.dedicated = False
-        print("nnnnnnnnnnnnneeeeeeeeeeewwwwwwwwwww: ", new_project)
+        print("New Project: ", new_project)
         time.sleep(0.5)  # Uncomment this if the IoTtalk Server cannot create Project in time.
-        status, project_info = get_proj_ag(new_cb, api_logger)
+        status, project_info = get_proj_ag(new_cb_name, api_logger)
         if not status:
             cb.delete()
             cb_db.commit()
@@ -1077,22 +1080,19 @@ def create_cb():
                 for do in project_info["odo"]:
                     if do["dm_name"] == "ControlBoard":
                         do_id.append(do["do_id"])
-        print("ggggggggggggggggggggggggggggggggggggggggggg")
-        print(project_info)
+
         if len(do_id) == 1:
             status, result = delete_do_ag(p_id, do_id[0], api_logger)
             for na in project_info["na"]:
                 status, result = delete_na_ag(na["na_id"], p_id, api_logger)
         if len(do_id) != 2:
             # Create Device Object
-            print("cccccccccccccccccreate device object")
             status, do_id = create_do_ag(p_id, iottalk_info["df_id"], "ControlBoard", api_logger)
             if not status:
                 cb.delete()
                 cb_db.commit()
                 abort(500, "Create CB failed at creating DO, check api log files and IoTtalk CCM.")
-        print("dddddddddddooooooooooooiiiiiiiiiiiiddddddddddd: ", do_id)
-        status, project_info = get_proj_ag(new_cb, api_logger)
+        status, project_info = get_proj_ag(new_cb_name, api_logger)
         # Fetch dfo ids
         dfo_ids = list()
         dfo_mapping = dict()  # dfo_id mapping of CBElement-I to CBElement-O
@@ -1121,7 +1121,7 @@ def create_cb():
                 break
             state, res = create_na_ag(p_id, dfo_pair, api_logger)
 
-        status, project_info = get_proj_ag(new_cb, api_logger)
+        status, project_info = get_proj_ag(new_cb_name, api_logger)
         na_ids = list()
         for na in project_info["na"]:
             na_ids.append(na["na_id"])

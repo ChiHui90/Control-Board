@@ -24,7 +24,7 @@ Notes:
 ---
 
 User input:
-「{user_input}」
+【{user_input}】
 
 ---
 
@@ -87,10 +87,10 @@ Each sensor object must include the following fields:
 Based on the following user requirement and the original JSON, modify the JSON accordingly. Output only the final JSON, without any additional text or explanation.
 
 User Requirement:
-「{user_input}」
+【{user_input}】
 
 Original JSON:
-「{rule}」
+【{rule}】
 
 '''
 
@@ -99,7 +99,7 @@ The input device is {user_ido}
 The output device is {user_odo}
 
 User description:
-{user_input}
+【{user_input}】
 
 Rules:
 - A match REQUIRES "d_name" AND "alias_name" to be EXACTLY and SEMANTICALLY EQUIVALENT to the user description.  

@@ -490,7 +490,6 @@ def create_do_ag(p_id, df_id, dm_name, logger):
         if not status:
             raise CCMAPIFailError
         logger.info('\tCreate DO\t......done')
-        print("hello                ", response["result"])
         return status, response["result"]
     except CCMAPIFailError:
         logger.exception("CCM API request failed")
@@ -697,8 +696,6 @@ def create_na_ag(p_id, dfo_ids, logger):
     }
     try:
         state, res = _post("ccm_api", data, logger)
-        print("1111111111111111111111111")
-        print(res)
         if not state:
             raise CCMAPIFailError
         return state, res["result"]

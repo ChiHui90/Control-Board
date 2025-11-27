@@ -144,7 +144,6 @@ var app = new Vue({
     }
     this.getLLMConfigs()
         .then((data) => {
-          console.log("ddddddddddddddd: ", data)
           this.providersData = data;
           for (let provider in this.providersData) {
             console.log("provider: ", provider);
@@ -152,7 +151,6 @@ var app = new Vue({
             console.log("ttttttttttttttttt: ", this.providersData[provider])
             if (api === undefined) {
               api = window.localStorage.getItem(provider) || "";
-              // console.log("gggggggggggeeeeeeeeeeeettttttt: ", api);
             }
             this.providersData[provider].api_key = api;
           }
