@@ -88,10 +88,10 @@ sensor_config_prompt = '''
 請根據以下使用者需求與原始 JSON，修改 JSON 內容。只輸出最終 JSON，不要輸出任何其他文字或說明。
 
 使用者需求:
-「{user_input}」
+{user_input}
 
 原始 JSON:
-「{rule}」
+{rule}
 
 '''
 
