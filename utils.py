@@ -696,6 +696,8 @@ def create_na_ag(p_id, dfo_ids, logger):
     }
     try:
         state, res = _post("ccm_api", data, logger)
+        print(";;;;;;;;;;;;;;;;;;;;;;;;;")
+        print(res)
         if not state:
             raise CCMAPIFailError
         return state, res["result"]

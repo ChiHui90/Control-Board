@@ -159,12 +159,16 @@ def open_cb_gui(cb_name):
         
         print("已登入")
 
-        account = CB_Account.get(account=session["user"])
+        account = CB_Account.get(access_token=session.get("token"))
         if account is None:
             raise NotFoundError
 
-        cb:CB = CB.get(cb_name=cb_name)
-        if not cb:
+        cb: CB = CB.get(cb_name=cb_name)
+        if cb is not None:
+            account.cb_set.add(cb)
+            cb.account_set.add(account)
+            cb_db.commit()
+        else:
             return "沒有此項目"
         
         status, project_info = get_proj_ag(cb_name, api_logger)
@@ -195,17 +199,15 @@ def open_cb_gui(cb_name):
 
             cb_to_cb_nas.append(na["na_id"])
 
-        threads = []
-        for cb_na in cb_to_cb_nas:
-            t = threading.Thread(target=delete_na_ag, args=(cb_na, project_info["p_id"], api_logger))
-            t.start()
-            threads.append(t)
+        # threads = []
+        # for cb_na in cb_to_cb_nas:
+        #     t = threading.Thread(target=delete_na_ag, args=(cb_na, project_info["p_id"], api_logger))
+        #     t.start()
+        #     threads.append(t)
 
-        for t in threads:
-            t.join()
+        # for t in threads:
+        #     t.join()
 
-        get_proj_ag(cb_name, api_logger)
-        
         df_num = 0
         for odo in project_info["odo"]:
             if odo["dm_name"] == "ControlBoard":
@@ -217,14 +219,15 @@ def open_cb_gui(cb_name):
             if ido["dm_name"] == "ControlBoard":
                 cb_ido_id = ido["do_id"]
                 break
-
-        new_cb_na_num = min(df_num, 9)
-        for i in range(new_cb_na_num):
-            dfo_pair = [(cb_ido_id, cb_idf_ids[i]), (cb_odo_id, cb_odf_ids[i])]
-            state, res = create_na_ag(project_info["p_id"], dfo_pair, api_logger)
-            if not state:
-                api_logger.exception("Error creating new NA for CBElement, check API logs")
-                return "Error creating new NA for CBElement, check API logs", 500
+        
+        # chuangch：以後再改
+        # new_cb_na_num = min(df_num, 9)
+        # for i in range(new_cb_na_num):
+        #     dfo_pair = [(cb_ido_id, cb_idf_ids[i]), (cb_odo_id, cb_odf_ids[i])]
+        #     state, res = create_na_ag(project_info["p_id"], dfo_pair, api_logger)
+        #     if not state:
+        #         api_logger.exception(f"Error creating new NA for CBElement：{res}")
+        #         return "Error creating new NA for CBElement, check API logs", 500
             
         status, project_info = get_proj_ag(cb_name, api_logger)
         na_ids = list()
@@ -252,20 +255,15 @@ def open_cb_gui(cb_name):
 def get_infos():
     return f'https://{env_config["IoTtalk"]["ServerCCMIP"]}/connection#', 200
 
-@apis.route("/project/infos/<string:p_id>", methods=["GET"])
+@apis.route("/project/infos/<string:cb_name>", methods=["GET"])
 @orm.db_session
 @requires_login
-def project_infos(p_id):
-    cb:CB = CB.get(p_id=p_id)
-    if cb:
-        cb_name = cb.cb_name
-        state, data = get_project_info(cb_name, api_logger)
-    else:
-        return "can not find cb", 400
+def project_infos(cb_name):
+    state, data = get_project_info(cb_name, api_logger)
     if state:
         return data, 200
     else:
-        return "", 400
+        return "CCMAPI Error", 400
 
 
 @apis.route('/cb/<int:cb_id>/new_rules', methods=['POST'])
@@ -1120,6 +1118,8 @@ def create_cb():
             if i >= user_odf_num:
                 break
             state, res = create_na_ag(p_id, dfo_pair, api_logger)
+            if not state:
+                print(f"\033[93m create_cb 1119: {res}\033[0m")
 
         status, project_info = get_proj_ag(new_cb_name, api_logger)
         na_ids = list()
@@ -1238,8 +1238,8 @@ def get_cb(usr_account):
         if "self" == usr_account:  # Access current logined user's accessible CBs.
             usr_account = session["user"]
         current_user = CB_Account.get(account=session["user"])
-        if 0 == current_user.privilege and usr_account != session["user"]:
-            raise NotAuthorizedError
+        # if 0 == current_user.privilege and usr_account != session["user"]:
+        #     raise NotAuthorizedError
         accessible_cb = list()
         if "all" == usr_account:
             print("CB : ", CB.select()[:])

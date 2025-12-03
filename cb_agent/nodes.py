@@ -84,7 +84,7 @@ def device_selector(state: GraphState):
     selected_df = {"input": [], "output": []}
 
     user_device = get_user_device(state.project_info)
-    rule = r'([A-Za-z0-9+\-_!@#$%^&*\[\]\{\}"\'|]+)\s*:\s*([A-Za-z0-9+\-_!@#$%^&*\[\]\{\}"\'|]+)'
+    rule = r'([A-Za-z0-9+\-_.!@#$%^&*<>~\[\]\{\}"\'|]+)\s*:\s*([A-Za-z0-9+\-_!@#$%^&*~\[\]\{\}"\'|]+)'
     matches = re.findall(rule, state.user_input)
     matches = list(set(matches)) 
 
@@ -168,6 +168,8 @@ def cb_network(state: GraphState):
     print("workflow: cb_network")
     project_info = state.project_info
     unused_cb_dfo = get_unused_cb_dfo(project_info)
+    if unused_cb_dfo is None:
+        raise AgentError("NetworkApplication failed to connect properly.")
 
     print("selected_df: ", state.selected_df)
     cb_object_id = get_cb_object_id(project_info)

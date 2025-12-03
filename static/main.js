@@ -357,6 +357,7 @@ var app = new Vue({
           }
           this.showLoading = false;
           window.location = "/";
+          console.log("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
         })
     },
     refreshSAWorker: function () {
@@ -460,6 +461,7 @@ var app = new Vue({
       return;
     },
     goCBGUI: function (cb) {
+      // chuangch：true
       this.showLoading = true;
       this.onRefreshCB(cb)
         .then((res) => {
@@ -488,7 +490,7 @@ var app = new Vue({
       fetch(`/project/infos/${cb.text}`, { method: "GET" })
         .then(response => response.json())
         .then(result => {
-          if (result.result.na.length >= 11) {
+          if (result.result.na.length >= 3) {
             this.isGUIButton = true;
           }
 
