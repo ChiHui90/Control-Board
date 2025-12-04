@@ -93,103 +93,8 @@ var app = new Vue({
     deviceFeatures: [],
   },
   created: async function () {
-    this.width = window.innerWidth;
-    window.addEventListener("resize", this.onWindowResize);
-    this.statusTrackWorker = setInterval(this.refreshStatusWorker, 1000);
-
-    try {
-      const res = await axios.get("/subsystem/infos");
-      this.IoTtalkURL = res.data;
-    } catch (err) {
-      console.log(err);
-    }
-
-    let cb = window.localStorage.getItem("cb");
-    if (cb !== null) {
-      cb = JSON.parse(cb);
-
-      this.controlboards = [cb];
-      this.privilege = window.localStorage.getItem("privilege");
-      this.currentCB = cb;
-      this.selectedControlBoard = cb;
-
-      this.currentPage = 1;
-      this.isGoGUI = true;
-
-      this.refreshRuleWorker();
-
-      window.addEventListener("beforeunload", function () {
-        window.localStorage.removeItem("cb");
-        window.localStorage.removeItem("privilege");
-      });
-
-    } else {
-      if (this.privilege) {
-        try {
-          this.users = await this.getAllUsers();
-        } catch (err) {
-          if (err.response?.status !== 403) alert(err.response.data);
-        }
-      }
-
-      this.refreshCBWorker();
-      this.cbTrackWorker = setInterval(this.cbTrackWorker, 60000);
-    }
-
-    try {
-      this.providersData = await this.getLLMConfigs();
-      for (let provider in this.providersData) {
-        let api = this.providersData[provider].api_key ?? window.localStorage.getItem(provider) ?? "";
-        this.providersData[provider].api_key = api;
-      }
-      this.apiKey = this.providersData[this.selectedProvider].api_key;
-    } catch (err) {
-      console.log("Error:", err);
-    }
-  },
-
-  mounted: async function() {
-    if (typeof default_cb !== "undefined" && default_cb) {
-      this.showLoading = true;
-
-      const req = this.privilege ? "all" : "self";
-
-      try {
-        const cbList = await this.getAvailableCBs(req);
-
-        const cb = cbList.find(cb => cb.text === default_cb);
-        if (!cb) {
-          alert("ControlBoard not found");
-          this.showLoading = false;
-          window.location.href = "/";
-          return;
-        }
-
-        await this.onRefreshCB(cb);
-
-        this.refreshCBWorker(cb);
-        cb.status = true;
-        window.localStorage.setItem("cb", JSON.stringify(cb));
-        window.localStorage.setItem("privilege", this.privilege);
-        window.localStorage.setItem("isGoLLM", true);
-
-        window.location.href = "/";
-        this.showLoading = false;
-        return;
-
-      } catch (err) {
-        console.error(err);
-        this.showLoading = false;
-        return;
-      }
-    }
-
-    const isGoLLM = window.localStorage.getItem("isGoLLM") === "true";
-
-    if (isGoLLM) {
-      this.currentPage = 2;
-      window.localStorage.removeItem("isGoLLM");
-    }
+    await this.init();      
+    await this.afterInit();  
   },
   computed: {
     maxPinnedCBs: function () {
@@ -213,6 +118,132 @@ var app = new Vue({
     }
   },
   methods: {
+    async init() {
+      this.width = window.innerWidth;
+      window.addEventListener("resize", this.onWindowResize);
+      this.statusTrackWorker = setInterval(this.refreshStatusWorker, 1000);
+
+      try {
+        const res = await axios.get("/subsystem/infos");
+        this.IoTtalkURL = res.data;
+      } catch (err) {
+        console.log(err);
+      }
+
+      let cb = window.localStorage.getItem("cb");
+      if (cb !== null) {
+        cb = JSON.parse(cb);
+
+        this.controlboards = [cb];
+        this.privilege = window.localStorage.getItem("privilege");
+        this.currentCB = cb;
+        this.selectedControlBoard = cb;
+        this.currentPage = 1;
+        this.isGoGUI = true;
+
+        this.refreshRuleWorker();
+
+        window.addEventListener("beforeunload", () => {
+          window.localStorage.removeItem("cb");
+          window.localStorage.removeItem("privilege");
+        });
+
+      } else {
+
+        // 若 privilege 存在，載入 user list
+        if (this.privilege) {
+          try {
+            this.users = await this.getAllUsers();
+          } catch (err) {
+            if (err.response?.status !== 403) alert(err.response.data);
+          }
+        }
+
+        this.refreshCBWorker();
+        this.cbTrackWorker = setInterval(this.cbTrackWorker, 60000);
+      }
+
+      // LLM Providers
+      try {
+        this.providersData = await this.getLLMConfigs();
+
+        for (let provider in this.providersData) {
+          let api = this.providersData[provider].api_key 
+                ?? window.localStorage.getItem(provider) 
+                ?? "";
+          this.providersData[provider].api_key = api;
+        }
+        this.apiKey = this.providersData[this.selectedProvider].api_key;
+      } catch (err) {
+        console.log("Error:", err);
+      }
+    },
+
+    async afterInit() {
+
+      if (typeof default_cb !== "undefined" && default_cb) {
+        this.showLoading = true;
+
+        const req = this.privilege ? "all" : "self";
+
+        try {
+          const cbList = await this.getAvailableCBs(req);
+
+          const cb = cbList.find(cb => cb.text === default_cb);
+          if (!cb) {
+            alert("ControlBoard not found");
+            this.showLoading = false;
+            window.location.href = "/";
+            return;
+          }
+
+          await this.onRefreshCB(cb);
+
+          this.refreshCBWorker(cb);
+          cb.status = true;
+          window.localStorage.setItem("cb", JSON.stringify(cb));
+          window.localStorage.setItem("privilege", this.privilege);
+          window.localStorage.setItem("isGoLLM", true);
+
+          window.location.href = "/";
+          this.showLoading = false;
+          return;
+
+        } catch (err) {
+          console.error(err);
+          this.showLoading = false;
+          return;
+        }
+      }
+
+      let data = null;
+      try {
+        
+        const response = await fetch("/llm/get_rules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            cb_name: this.selectedControlBoard?.text ?? null,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        data = await response.json();
+
+      } catch (err) {
+        console.error("deleteNAMode 發生錯誤", err);
+      }
+
+      if (localStorage.getItem("isGoLLM") === "true") {
+        const hasRules = Array.isArray(data?.data) && data.data.length > 0;
+        this.currentPage = hasRules ? 1 : 2;
+        localStorage.removeItem("isGoLLM");
+      }
+
+    },
     projectURL: function (cb) {
       return this.IoTtalkURL.concat(cb);
     },
@@ -333,10 +364,10 @@ var app = new Vue({
             console.log("🚀 ~ file: main.js ~ line 285 ~ .then ~ new_rules", new_rules)
           })
           this.settings = new_rules;
-          if (this.settings.length == 0 && this.isGoGUI) {
-            this.currentPage = 2;
-            this.isGoGUI = false;
-          } 
+          // if (this.settings.length == 0 && this.isGoGUI) {
+          //   this.currentPage = 2;
+          //   this.isGoGUI = false;
+          // } 
           this.refreshStatusWorker();
         })
         .catch((err) => {
