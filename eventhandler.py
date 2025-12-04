@@ -199,14 +199,14 @@ def open_cb_gui(cb_name):
 
             cb_to_cb_nas.append(na["na_id"])
 
-        # threads = []
-        # for cb_na in cb_to_cb_nas:
-        #     t = threading.Thread(target=delete_na_ag, args=(cb_na, project_info["p_id"], api_logger))
-        #     t.start()
-        #     threads.append(t)
+        threads = []
+        for cb_na in cb_to_cb_nas:
+            t = threading.Thread(target=delete_na_ag, args=(cb_na, project_info["p_id"], api_logger))
+            t.start()
+            threads.append(t)
 
-        # for t in threads:
-        #     t.join()
+        for t in threads:
+            t.join()
 
         df_num = 0
         for odo in project_info["odo"]:
@@ -221,13 +221,13 @@ def open_cb_gui(cb_name):
                 break
         
         # chuangch：以後再改
-        # new_cb_na_num = min(df_num, 9)
-        # for i in range(new_cb_na_num):
-        #     dfo_pair = [(cb_ido_id, cb_idf_ids[i]), (cb_odo_id, cb_odf_ids[i])]
-        #     state, res = create_na_ag(project_info["p_id"], dfo_pair, api_logger)
-        #     if not state:
-        #         api_logger.exception(f"Error creating new NA for CBElement：{res}")
-        #         return "Error creating new NA for CBElement, check API logs", 500
+        new_cb_na_num = min(df_num, 9)
+        for i in range(new_cb_na_num):
+            dfo_pair = [(cb_ido_id, cb_idf_ids[i]), (cb_odo_id, cb_odf_ids[i])]
+            state, res = create_na_ag(project_info["p_id"], dfo_pair, api_logger)
+            if not state:
+                api_logger.exception(f"Error creating new NA for CBElement：{res}")
+                return "Error creating new NA for CBElement, check API logs", 500
             
         status, project_info = get_proj_ag(cb_name, api_logger)
         na_ids = list()
@@ -971,7 +971,7 @@ def refresh_cb(cb_id):
 
 
         # Bind device to DO
-        time.sleep(0.5)  # Uncomment this if the IoTtalk Server cannot create DO in time.
+        time.sleep(1.5)  # Uncomment this if the IoTtalk Server cannot create DO in time.
         do_id = cb.do_id.split(",")
         status, dm_name = bind_device_ag(cb.mac_addr, cb.p_id, do_id, api_logger)
         if not status:

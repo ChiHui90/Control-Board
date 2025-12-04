@@ -662,7 +662,8 @@ def bind_device_ag(mac_addr, p_id, do_id, logger):
                 }
                 status, response = _post("ccm_api", data, logger)
                 if not status:
-                    # print("66666666666666666666666666666666666666644444444444444")
+                    print("66666666666666666666666666666666666666644444444444444")
+                    print(response)
                     raise CCMAPIFailError
             logger.info("\tBind device\t......done")
             return status, response["result"]
@@ -696,8 +697,9 @@ def create_na_ag(p_id, dfo_ids, logger):
     }
     try:
         state, res = _post("ccm_api", data, logger)
-        print(";;;;;;;;;;;;;;;;;;;;;;;;;")
+        print("pppppppppppppppppppppp")
         print(res)
+        
         if not state:
             raise CCMAPIFailError
         return state, res["result"]

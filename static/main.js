@@ -92,113 +92,100 @@ var app = new Vue({
     settingsForAssistant: null,
     deviceFeatures: [],
   },
-  created: function () {
-    // Procedures to correctly render data:
-    // get CBs -> get Rules -> get Status
+  created: async function () {
     this.width = window.innerWidth;
     window.addEventListener("resize", this.onWindowResize);
     this.statusTrackWorker = setInterval(this.refreshStatusWorker, 1000);
-    axios
-      .get("/subsystem/infos")
-      .then((res) => {
-        this.IoTtalkURL = res.data;
-      })
-      .catch((err) => {
-        console.log(err);
-      })
 
-    // there are two strategy: local storage and postMessage, where postMessage is not available in this scenario.
-    // ref: https://stackoverflow.com/questions/57503980/pass-data-between-components-in-a-new-tab
-    var cb = window.localStorage.getItem("cb");
-    if (cb !== null) {  // Create a new tab for the admin to view the CB Elements
+    try {
+      const res = await axios.get("/subsystem/infos");
+      this.IoTtalkURL = res.data;
+    } catch (err) {
+      console.log(err);
+    }
+
+    let cb = window.localStorage.getItem("cb");
+    if (cb !== null) {
       cb = JSON.parse(cb);
+
       this.controlboards = [cb];
       this.privilege = window.localStorage.getItem("privilege");
       this.currentCB = cb;
       this.selectedControlBoard = cb;
+
       this.currentPage = 1;
       this.isGoGUI = true;
+
       this.refreshRuleWorker();
 
       window.addEventListener("beforeunload", function () {
-        // clear the cb stored in local storage
         window.localStorage.removeItem("cb");
         window.localStorage.removeItem("privilege");
-      })
+      });
 
-    } else {  // Main page
+    } else {
       if (this.privilege) {
-        console.log("get user");
-        this.getAllUsers()
-          .then((users) => {
-            this.users = users;
-          })
-          .catch((err) => {
-            if (err.response.status != 403) {
-              alert(err.response.data);
-            }
-          });
+        try {
+          this.users = await this.getAllUsers();
+        } catch (err) {
+          if (err.response?.status !== 403) alert(err.response.data);
+        }
       }
-      this.refreshCBWorker();  // Close call current_data when website opened
+
+      this.refreshCBWorker();
       this.cbTrackWorker = setInterval(this.cbTrackWorker, 60000);
     }
-    this.getLLMConfigs()
-        .then((data) => {
-          this.providersData = data;
-          for (let provider in this.providersData) {
-            console.log("provider: ", provider);
-            let api = this.providersData[provider].api_key;
-            console.log("ttttttttttttttttt: ", this.providersData[provider])
-            if (api === undefined) {
-              api = window.localStorage.getItem(provider) || "";
-            }
-            this.providersData[provider].api_key = api;
-          }
-          this.apiKey = this.providersData[this.selectedProvider].api_key;
-        })
-        .catch((err) => {
-          console.log("Error: ", err);
-        })
-    return;
+
+    try {
+      this.providersData = await this.getLLMConfigs();
+      for (let provider in this.providersData) {
+        let api = this.providersData[provider].api_key ?? window.localStorage.getItem(provider) ?? "";
+        this.providersData[provider].api_key = api;
+      }
+      this.apiKey = this.providersData[this.selectedProvider].api_key;
+    } catch (err) {
+      console.log("Error:", err);
+    }
   },
-  mounted: function() {
+
+  mounted: async function() {
     if (typeof default_cb !== "undefined" && default_cb) {
       this.showLoading = true;
-      if (this.privilege) {
-        var req = "all";
-      } else {
-        var req = "self";
-      }
-      this.getAvailableCBs(req)
-        .then((res) => {
-          var cbList = res;
-          var cb = cbList.find(cb => cb.text === default_cb);
-          if (cb) {
-            this.onRefreshCB(cb)
-              .then((res) => {
-                this.refreshCBWorker(cb);
-                cb.status = true;
-                window.localStorage.setItem("cb", JSON.stringify(cb));
-                window.localStorage.setItem("privilege", this.privilege);
-                window.localStorage.setItem("isGoLLM", true);
-                window.location.href = "/";
-                this.showLoading = false;
-                return
-              })
-              .catch((err) => {
-                console.log(err);
-              })
-          } else {
-            alert("ControlBoard not found");
-            this.showLoading = false;
-            window.location.href = "/"
-          }
-        })
-        return;
-    }
-    isGoLLM = window.localStorage.getItem("isGoLLM") === 'true';
 
-    console.log("gogogogogogo main.js 192:", isGoLLM);
+      const req = this.privilege ? "all" : "self";
+
+      try {
+        const cbList = await this.getAvailableCBs(req);
+
+        const cb = cbList.find(cb => cb.text === default_cb);
+        if (!cb) {
+          alert("ControlBoard not found");
+          this.showLoading = false;
+          window.location.href = "/";
+          return;
+        }
+
+        await this.onRefreshCB(cb);
+
+        this.refreshCBWorker(cb);
+        cb.status = true;
+        window.localStorage.setItem("cb", JSON.stringify(cb));
+        window.localStorage.setItem("privilege", this.privilege);
+        window.localStorage.setItem("isGoLLM", true);
+
+        window.location.href = "/";
+        this.showLoading = false;
+        return;
+
+      } catch (err) {
+        console.error(err);
+        this.showLoading = false;
+        return;
+      }
+    }
+
+    const isGoLLM = window.localStorage.getItem("isGoLLM") === "true";
+
     if (isGoLLM) {
       this.currentPage = 2;
       window.localStorage.removeItem("isGoLLM");
@@ -226,9 +213,6 @@ var app = new Vue({
     }
   },
   methods: {
-    /* API data getter Methods, including CB, SA, Rule, Status, User, 
-    *  Reachable Project
-    */
     projectURL: function (cb) {
       return this.IoTtalkURL.concat(cb);
     },
@@ -245,78 +229,33 @@ var app = new Vue({
         autoHideDelay: 5000,
       });
     },
-    getAvailableCBs: function (account) {
-      return new Promise(function (resolve, reject) {
-        axios
-          .get("/cb/get_cb/" + account)
-          .then(function (res) {
-            res.data.sort((a, b) => b.value - a.value);
-            resolve(res.data);
-          })
-          .catch(function (err) {
-            reject(err);
-          });
+    async getAvailableCBs(account) {
+      const res = await axios.get(`/cb/get_cb/${account}`);
+      return res.data.sort((a, b) => b.value - a.value);
+    },
+
+    async getCBRules(cbID) {
+      const res = await axios.get(`/cb/${cbID}/rules`);
+      return res.data.sort((a, b) => {
+        const actuator1 = a.actuator.toUpperCase();
+        const actuator2 = b.actuator.toUpperCase();
+        return actuator1.localeCompare(actuator2);
       });
     },
-    getCBRules: function (cbID) {
-      return new Promise(function (resolve, reject) {
-        axios
-          .get("/cb/" + cbID.toString() + "/rules")
-          .then((rules) => {
-            rules.data.sort((a, b) => {
-              actuator1 = a.actuator.toUpperCase();
-              actuator2 = b.actuator.toUpperCase();
-              if (actuator1 < actuator2) {
-                return -1;
-              } else if (actuator1 > actuator2) {
-                return 1;
-              } else {
-                return 0;
-              }
-            })
-            resolve(rules.data);
-          })
-          .catch((err) => {
-            reject(err);
-          });
-      });
+
+    async getRuleStatus(cbID) {
+      const res = await axios.get(`/cb/${cbID}/current_data`);
+      return res.data;
     },
-    getRuleStatus: function (cbID) {
-      return new Promise(function (resolve, reject) {
-        axios
-          .get("/cb/" + cbID.toString() + "/current_data")
-          .then((status) => {
-            resolve(status.data);
-          })
-          .catch((err) => {
-            reject(err);
-          });
-      });
+
+    async getAllUsers() {
+      const res = await axios.get("/account/get_accounts");
+      return res.data.sort((a, b) => b.superuser - a.superuser);
     },
-    getAllUsers: function () {
-      return new Promise(function (resolve, reject) {
-        axios
-          .get("/account/get_accounts")
-          .then((res) => {
-            res.data.sort((a, b) => b.superuser - a.superuser);
-            resolve(res.data);
-          })
-          .catch((err) => {
-            reject(err);
-          })
-      })
-    },
-    getLLMConfigs: function () {
-      return new Promise(function (resolve, reject) {
-        axios
-          .get("/llm/config")
-          .then((res) => {
-            resolve(res.data);
-          })
-          .catch((err) => {
-            reject(err);
-          })
-      })
+
+    async getLLMConfigs() {
+      const res = await axios.get("/llm/config");
+      return res.data;
     },
     /* Refresh routine procedures, including CB, SA, Rule, Status */
     refreshCBWorker: function (next_currentCB) {
@@ -357,7 +296,6 @@ var app = new Vue({
           }
           this.showLoading = false;
           window.location = "/";
-          console.log("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
         })
     },
     refreshSAWorker: function () {
@@ -761,41 +699,27 @@ var app = new Vue({
       return;
     },
     */
-    onRefreshCB: function (cb) {
-      return new Promise((resolve, reject) => {
-        console.log(this.currentCB);
-        console.log(cb);
-        window.clearInterval(this.statusTrackWorker);
-        this.statusTrackWorker = -1;
-        if (cb === undefined) {
-          value = this.currentCB.value;
-        } else {
-          value = cb.value
-        }
-        axios
-          .get("/cb/refresh_cb/" + value.toString())
-          .then((res) => {
-            this.statusTrackWorker = setInterval(this.refreshStatusWorker, 1000);
-            resolve(res);
-          })
-          .catch((err) => {
-            if (err.response) {
-              const data = err?.response?.data || {};
-              const errorMsg = data.msg || data.message || 'Unknown error';
-              this.makeToast('danger', 'Error', errorMsg);
-              this.showLoading = false;
-              this.$nextTick(() => {
-                setTimeout(() => {
-                  window.location.href = "/";
-                }, 3000);
-              });
-            } else {
-              console.log("Network Error", err.message);
-            }
-            reject(err);
-          })
-      })
+    async onRefreshCB(cb) {
+      try {
+        const value = cb?.value ?? this.currentCB.value;
+
+        const res = await axios.get(`/cb/refresh_cb/${value}`);
+        return res.data;
+
+      } catch (err) {
+        const data = err?.response?.data ?? {};
+        const errorMsg = data.msg || data.message || "Unknown error";
+        this.makeToast("danger", "Error", errorMsg);
+        this.showLoading = false;
+
+        this.$nextTick(() => {
+          setTimeout(() => (window.location.href = "/"), 3000);
+        });
+
+        throw err;
+      }
     },
+
     onSettingUndoChange: function (settingIndex) {
       this.$set(this.settings, settingIndex,
         JSON.parse(JSON.stringify(this.backupSettings[settingIndex])));
@@ -1102,26 +1026,6 @@ var app = new Vue({
       if (!deviceName || !featureName) return;
       this.chatInput += ` ${deviceName}:${featureName} `;
     },
-
-    // onUpdateSensorCod({ ruleID, data }) {
-    //   // TODO
-    //   //   sensorCod:{
-    //   //     comparisonOpen: '',
-    //   //     comparisonOpenInput: '',
-    //   //     comparisonClose: '',
-    //   //     comparisonCloseInput: '',
-    //   // }
-    //   const index = this.settings.findIndex((item) => {
-    //     return item.ruleID === ruleID;
-    //   });
-    //   console.log(index);
-    //   // console.log(ruleID,data)
-    //   this.settings[index].content.openSensor = data.comparisonOpen;
-    //   this.settings[index].content.openSensorVal = data.comparisonOpenInput;
-    //   this.settings[index].content.closeSensor = data.comparisonClose;
-    //   this.settings[index].content.closeSensorVal = data.comparisonCloseInput;
-
-    // }
-  },
+  }
 })
 
