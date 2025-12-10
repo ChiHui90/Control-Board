@@ -1,4 +1,5 @@
 import requests
+from openai import OpenAI
 
 def _post(url, data) -> dict:
     full_url = f"http://140.113.110.4:8000/{url}/"
@@ -258,6 +259,35 @@ def query_llama(prompt: str, base_url: str, model: str, api_key: str):
     except requests.exceptions.RequestException as e:
         print(f"Error querying Llama: {e}")
         return None
+
+def query_openai(prompt: str, base_url: str, model: str, api_key: str):
+    # 建立 OpenAI Client
+    model = "gpt-5-mini-2025-08-07"
+    
+    client = OpenAI(api_key=api_key)
+
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            stream=False
+        )
+
+        content = response.choices[0].message.content
+        content = content.replace("True", "true").replace("False", "false")
+        
+        # 與你原本行為一致
+        return (
+            content.replace("True", "true")
+                   .replace("False", "false")
+        )
+
+    except Exception as e:
+        print(f"Error querying OpenAI SDK: {e}")
+        return None
+
 
 
 if __name__ == "__main__":

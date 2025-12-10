@@ -143,13 +143,14 @@ var app = new Vue({
 
         this.refreshRuleWorker();
 
-        window.addEventListener("beforeunload", () => {
-          window.localStorage.removeItem("cb");
-          window.localStorage.removeItem("privilege");
-        });
+        // window.addEventListener("beforeunload", () => {
+        //   window.localStorage.removeItem("cb");
+        //   window.localStorage.removeItem("privilege");
+        // });
+        window.localStorage.removeItem("cb");
+        window.localStorage.removeItem("privilege");
 
       } else {
-
         // 若 privilege 存在，載入 user list
         if (this.privilege) {
           try {
@@ -160,7 +161,7 @@ var app = new Vue({
         }
 
         this.refreshCBWorker();
-        this.cbTrackWorker = setInterval(this.cbTrackWorker, 60000);
+        // this.cbTrackWorker = setInterval(this.cbTrackWorker, 60000);
       }
 
       // LLM Providers
@@ -181,7 +182,7 @@ var app = new Vue({
 
     async afterInit() {
 
-      if (typeof default_cb !== "undefined" && default_cb) {
+      if (typeof default_cb !== "undefined" && default_cb && !localStorage.getItem("cb")) {
         this.showLoading = true;
 
         const req = this.privilege ? "all" : "self";
@@ -215,10 +216,13 @@ var app = new Vue({
           return;
         }
       }
+      if (!this.selectedControlBoard || !this.selectedControlBoard.text) {
+        console.log("afterInit: currentCB 不存在或沒有 text，跳過 get_rules");
+        return;
+      }
 
       let data = null;
       try {
-        
         const response = await fetch("/llm/get_rules", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -228,13 +232,13 @@ var app = new Vue({
         });
 
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          const errText = await response.text();
+          throw new Error(`HTTP error ${response.status}: ${errText}`);
         }
 
         data = await response.json();
-
       } catch (err) {
-        console.error("deleteNAMode 發生錯誤", err);
+        console.error("get_rules 發生錯誤:", err);
       }
 
       if (localStorage.getItem("isGoLLM") === "true") {
@@ -242,7 +246,6 @@ var app = new Vue({
         this.currentPage = hasRules ? 1 : 2;
         localStorage.removeItem("isGoLLM");
       }
-
     },
     projectURL: function (cb) {
       return this.IoTtalkURL.concat(cb);
@@ -316,9 +319,6 @@ var app = new Vue({
           else if (controlboards.length) {
             this.currentCB = controlboards[0];
           }
-          //if (controlboards.length !== 0) {
-          //  this.refreshRuleWorker();
-          //}
         })
         .catch((err) => {
           console.log(err);
@@ -364,10 +364,6 @@ var app = new Vue({
             console.log("🚀 ~ file: main.js ~ line 285 ~ .then ~ new_rules", new_rules)
           })
           this.settings = new_rules;
-          // if (this.settings.length == 0 && this.isGoGUI) {
-          //   this.currentPage = 2;
-          //   this.isGoGUI = false;
-          // } 
           this.refreshStatusWorker();
         })
         .catch((err) => {
@@ -375,7 +371,6 @@ var app = new Vue({
           if (err.response) {
             alert(err.response.data);
           }
-          // window.location = "/";
         })
     },
     refreshStatusWorker: function () {
@@ -385,7 +380,7 @@ var app = new Vue({
             this.setupRuleStatus(status);
           })
           .catch((err) => {
-            // console.log(err);
+            console.log(err);
             // if (err.response.status != 403) {
             //   alert(err.response.data);
             //   window.location = "/";
@@ -440,7 +435,10 @@ var app = new Vue({
           window.localStorage.setItem("privilege", this.privilege);
           this.showLoading = false;
           window.localStorage.setItem("settings", this.controlboards);
-          window.location.href = "/";
+
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 50);   
         })
         .catch((err) => {
           if (err.response.status === 400) {

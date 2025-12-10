@@ -74,7 +74,7 @@
           <span v-if="currentPage === 1 && controlboards.length === 0" style="font-weight: bolder;">
             <span>Please create a ControlBoard</span>
           </span>
-          <b-nav-item v-for="(cb, index) in controlboards"
+          <b-nav-item v-for="(cb, index) in controlboards" :key="cb.id || cb.text"
             v-if="currentPage === 1 && index < maxPinnedCBs && currentCB.value > 0"
             v-bind:active="cb.value===currentCB.value" v-on:click="onSwitchCB(cb)" class="fieldName">
             <% cb.text %>
@@ -86,7 +86,7 @@
                 <div class="d-flex justify-content-between">
                 </div>
               </template>
-              <b-dropdown-item v-for="cb in controlboards.slice(maxPinnedCBs)"
+              <b-dropdown-item v-for="cb in controlboards.slice(maxPinnedCBs)" :key="cb.id || cb.text"
                 v-bind:active="cb.value===currentCB.value" v-on:click="onSwitchCB(cb)" align-self="start">
                 <%cb.text%>
               </b-dropdown-item>
@@ -255,7 +255,8 @@
             <b-col v-else><b>Actions</b></b-col>
           </b-row>
 
-          <b-row class="text-left divide-top divide-bottom" v-for="(user, index) in users" v-if="manageTab">
+          <b-row class="text-left divide-top divide-bottom" v-for="(user, index) in users" v-if="manageTab"
+            :key="user.id || user.username">
             <!-- User Tab Content -->
             <b-col>
               <b-link v-b-modal="'modal'+index" size="sm" variant="outline-primary"
@@ -315,7 +316,8 @@
             </b-modal>
           </b-row>
 
-          <b-row class="text-left divide-top divide-bottom" v-for="(cb, index) in controlboards" v-if="!manageTab">
+          <b-row class="text-left divide-top divide-bottom" v-for="(cb, index) in controlboards" v-if="!manageTab"
+            :key="cb.id || cb.text">
             <b-col>
               <!-- <span v-bind:class="cb.value===maintanance?'bg-warning': ''" style="background-clip:content-box"> <% cb.text %> </span> -->
               <span>
@@ -525,13 +527,6 @@
   </div>
   <script type="text/javascript" src="/static/components.js?v=14"></script>
   <script type="text/javascript" src="/static/main.js?v=7"></script>
-  <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-    crossorigin="anonymous"></script> -->
-  <script>
-    onSAConfirm();
-    onSettingSaveChange();
-  </script>
 </body>
 
 </html>
